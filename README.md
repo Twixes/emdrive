@@ -1,9 +1,9 @@
-# faksobaza
+# Faksobaza
 
 Fast perceptually similar image search database.
 
 ## Etymology
 
-What does this project's name mean? Well, it's a portmanteau of two Polish words which happen to be very relevant here:
+Wondering about the meaning of this project's name? It's a portmanteau of two quite relevant Polish words:
 
-faksymile (facsimile – a copy of an image) + baza danych (database) = faksobaza
+faksymile (facsimile) + baza danych (database) = Faksobaza
