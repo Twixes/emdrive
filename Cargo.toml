@@ -7,3 +7,4 @@ repository = "https://github.com/Twixes/faksobaza/"
 license = "Apache-2.0"
 
 [dependencies]
+num = "0.4.0"
