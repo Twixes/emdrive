@@ -1,4 +1,4 @@
-/// Return whether two vecs are of identical length and have identical elements at corresponding positions.
+/// Return whether two vecs contain the same set of elements.
 pub fn vec_eq<T: Eq + PartialEq + Ord + PartialOrd + Clone>(a: &Vec<T>, b: &Vec<T>) -> bool {
     let mut a = a.to_vec();
     let mut b = b.to_vec();
