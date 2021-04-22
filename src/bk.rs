@@ -34,7 +34,7 @@ where
 
 impl<'a, P> PartialEq for SearchResult<'a, P>
 where
-    P: Eq,
+    P: Eq + Ord,
 {
     fn eq(&self, other: &Self) -> bool {
         vec_eq(&self.exact, &other.exact) && vec_eq(&self.close, &other.close)
