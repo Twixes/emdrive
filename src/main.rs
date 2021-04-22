@@ -7,9 +7,12 @@ fn get_env_or(key: String, default: String) -> String {
     }
 }
 
-fn get_env_cast_or<T: std::str::FromStr>(key: String, default: T) -> T {
-    match std::env::var_os(key) {
-        Some(value) => T::from_str(value.to_str().unwrap()).ok().unwrap(),
+fn get_env_cast_or<T: std::str::FromStr + std::fmt::Display>(key: String, default: T) -> T {
+    match std::env::var_os(&key) {
+        Some(value_raw) => match T::from_str(value_raw.to_str().unwrap()) {
+            Ok(value) => value,
+            Err(_) => panic!("{:?} is not a valid {} value!", value_raw, key)
+        },
         None => default,
     }
 }
