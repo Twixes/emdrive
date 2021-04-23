@@ -1,19 +1,18 @@
 use std::{net::{IpAddr, SocketAddr, TcpListener}, str::FromStr};
 
 fn get_env_or(key: String, default: String) -> String {
-    match std::env::var_os(key) {
-        Some(value) => value.into_string().unwrap(),
-        None => default,
-    }
+    std::env::var(key).unwrap_or(default)
 }
 
 fn get_env_cast_or<T: std::str::FromStr + std::fmt::Display>(key: String, default: T) -> T {
-    match std::env::var_os(&key) {
-        Some(value_raw) => match T::from_str(value_raw.to_str().unwrap()) {
+    let value_raw = &std::env::var(&key);
+    if let Ok(value_raw) = value_raw {
+        match T::from_str(value_raw) {
             Ok(value) => value,
-            Err(_) => panic!("{:?} is not a valid {} value!", value_raw, key)
-        },
-        None => default,
+            Err(_) => panic!("{} is not a valid {} value!", value_raw, key)
+        }
+    } else {
+        default
     }
 }
 
