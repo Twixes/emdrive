@@ -8,4 +8,4 @@ The name's a portmanteau in Polish.
 
 faksymile (facsimile) + baza danych (database) = Faksobaza
 
-Quite fitting, isn't it?
+You can see some logic in it if you squint.
