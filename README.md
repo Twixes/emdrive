@@ -1,11 +1,9 @@
-# Faksobaza
+# Metrobaza
 
-Fast perceptually similar image search database, written in Rust.
+Database for fast similarity search within metric spaces, written in Rust.
 
 ## Etymology
 
-The name's a portmanteau in Polish:
+Metrobaza's name is a portmanteau in Polish:
 
-faksymile (facsimile) + baza danych (database) = Faksobaza
-
-You can see some logic in it if you squint.
+metryka (metric) + baza danych (database)
