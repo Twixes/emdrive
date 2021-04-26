@@ -1,9 +1,11 @@
 # Faksobaza
 
-Fast perceptually similar image search database.
+Fast perceptually similar image search database, written in Rust.
 
 ## Etymology
 
-Wondering about the meaning of this project's name? It's a portmanteau of two quite relevant Polish words:
+The name's a portmanteau in Polish.
 
 faksymile (facsimile) + baza danych (database) = Faksobaza
+
+Quite fitting, isn't it?
