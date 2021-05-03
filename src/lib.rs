@@ -1,11 +1,12 @@
-mod bk;
-mod hamming;
+mod indexing;
 mod utils;
 
-impl bk::Distancable<hamming::Distance> for hamming::Position {
-    fn distance(&self, other: &Self) -> hamming::Distance {
-        hamming::distance(self, other)
+use indexing::{metrics, queries};
+
+impl queries::traits::Distancable<metrics::hamming::Distance> for metrics::hamming::Position {
+    fn distance(&self, other: &Self) -> metrics::hamming::Distance {
+        metrics::hamming::distance(self, other)
     }
 }
 
-pub type ImagesTree = bk::Tree<hamming::Position, hamming::Distance>;
+pub type ImagesTree = queries::bk::Tree<metrics::hamming::Position, metrics::hamming::Distance>;

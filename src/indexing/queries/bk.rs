@@ -2,13 +2,7 @@ use crate::utils::vec_eq;
 use num;
 use std::{collections::HashMap, hash::Hash};
 
-/// Trait for calculating distances used in the BK tree structure.
-pub trait Distancable<D>: Eq + Ord + Copy + Hash
-where
-    D: num::Num + Eq + Ord + Copy + Hash,
-{
-    fn distance(&self, other: &Self) -> D;
-}
+use super::traits::Distancable;
 
 /// A BK tree search result containing positions found.
 #[derive(Debug)]
