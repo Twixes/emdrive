@@ -1,7 +1,6 @@
-mod indexing;
 mod utils;
-
-use indexing::{metrics, queries};
+mod metrics;
+mod queries;
 
 impl queries::traits::Distancable<metrics::hamming::Distance> for metrics::hamming::Position {
     fn distance(&self, other: &Self) -> metrics::hamming::Distance {

@@ -1,14 +1,42 @@
 
-use std::{env, fmt, str::FromStr};
+use std::{env, fmt, str};
 
-pub fn get_env_or(key: String, default: String) -> String {
-    std::env::var(key).unwrap_or(default)
+pub struct Config {
+    pub tcp_listen_host: String,
+    pub tcp_listen_port: u16,
 }
 
-pub fn get_env_cast_or<T: FromStr + fmt::Display>(key: String, default: T) -> T {
-    let value_raw = &env::var(&key);
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            tcp_listen_host: "127.0.0.1".to_string(),
+            tcp_listen_port: 8824
+        }
+    }
+}
+
+impl Config {
+    pub fn new() -> Config {
+        let default = Config::default();
+        Config {
+            tcp_listen_host: get_env_or("TCP_LISTEN_HOST", default.tcp_listen_host),
+            tcp_listen_port: get_env_cast_or("TCP_LISTEN_PORT", default.tcp_listen_port)
+        }
+    }
+}
+
+fn get_env(key: &str) -> Result<String, env::VarError> {
+    env::var(format!("METRO_{}", &key.to_uppercase()))
+}
+
+fn get_env_or(key: &str, default: String) -> String {
+    get_env(key).unwrap_or(default)
+}
+
+fn get_env_cast_or<T: str::FromStr + fmt::Display>(key: &str, default: T) -> T {
+    let value_raw = get_env(key);
     if let Ok(value_raw) = value_raw {
-        match T::from_str(value_raw) {
+        match T::from_str(&value_raw) {
             Ok(value) => value,
             Err(_) => panic!("{} is not a valid {} value!", value_raw, key)
         }
