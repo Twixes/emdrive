@@ -1,6 +1,8 @@
 mod utils;
 mod metrics;
 mod queries;
+pub mod server;
+pub mod config;
 
 impl queries::traits::Distancable<metrics::hamming::Distance> for metrics::hamming::Position {
     fn distance(&self, other: &Self) -> metrics::hamming::Distance {
