@@ -1,6 +1,7 @@
 mod utils;
 mod metrics;
 mod queries;
+mod data;
 pub mod server;
 pub mod config;
 
