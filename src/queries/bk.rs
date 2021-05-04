@@ -2,7 +2,7 @@ use crate::utils::vec_eq;
 use num;
 use std::{collections::HashMap, hash::Hash};
 
-use super::traits::Distancable;
+use super::Distancable;
 
 /// A BK tree search result containing positions found.
 #[derive(Debug)]

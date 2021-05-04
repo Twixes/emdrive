@@ -1,6 +1,7 @@
 
 use std::{env, fmt, str};
 
+#[derive(Debug)]
 pub struct Config {
     pub tcp_listen_host: String,
     pub tcp_listen_port: u16,
