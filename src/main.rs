@@ -1,4 +1,4 @@
-use faksobaza::{config, server};
+use metrobaza::{config, server};
 
 fn main() {
     let config = config::Config::new();

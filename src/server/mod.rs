@@ -1,6 +1,5 @@
-
-use std::{net, str::FromStr};
 use crate::config;
+use std::{net, str::FromStr};
 
 fn create_listener(tcp_listen_address: net::SocketAddr) -> net::TcpListener {
     let listener = net::TcpListener::bind(tcp_listen_address).unwrap();
@@ -10,7 +9,10 @@ fn create_listener(tcp_listen_address: net::SocketAddr) -> net::TcpListener {
 }
 
 pub fn start_server(config: config::Config) {
-    let tcp_listen_address = net::SocketAddr::new(net::IpAddr::from_str(&config.tcp_listen_host).unwrap(), config.tcp_listen_port);
+    let tcp_listen_address = net::SocketAddr::new(
+        net::IpAddr::from_str(&config.tcp_listen_host).unwrap(),
+        config.tcp_listen_port,
+    );
 
     let listener = create_listener(tcp_listen_address);
 

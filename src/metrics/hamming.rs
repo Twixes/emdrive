@@ -11,6 +11,7 @@ const M16: Position = 0x0000ffff0000ffff0000ffff0000ffff;
 const M32: Position = 0x00000000ffffffff00000000ffffffff;
 const M64: Position = 0x0000000000000000ffffffffffffffff;
 
+// Calculates Hamming weight of value.
 pub fn weight(x: Position) -> Distance {
     let mut x = (x & M1) + ((x >> 1) & M1);
     x = (x & M2) + ((x >> 2) & M2);
@@ -22,6 +23,7 @@ pub fn weight(x: Position) -> Distance {
     Distance::try_from(x).unwrap()
 }
 
+/// Calculates Hamming distance between two values.
 pub fn distance(x: &Position, y: &Position) -> Distance {
     weight(x ^ y)
 }

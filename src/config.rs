@@ -1,10 +1,13 @@
-
 use std::{env, fmt, str};
 
+/// Metrobaza configuration.
 #[derive(Debug)]
 pub struct Config {
+    /// Path to database state, i.e. saved data. Conventionally `metrobaza/` in `/var/lib/`.
     pub state_location: String,
+    /// TCP interface listener host, `127.0.0.1` by default.
     pub tcp_listen_host: String,
+    /// TCP interface listener port. `8824` by default.
     pub tcp_listen_port: u16,
 }
 
@@ -13,7 +16,7 @@ impl Default for Config {
         Config {
             state_location: "/var/lib/metrobaza/".to_string(),
             tcp_listen_host: "127.0.0.1".to_string(),
-            tcp_listen_port: 8824
+            tcp_listen_port: 8824,
         }
     }
 }
@@ -24,7 +27,7 @@ impl Config {
         Config {
             state_location: get_env_or("STATE_LOCATION", default.state_location),
             tcp_listen_host: get_env_or("TCP_LISTEN_HOST", default.tcp_listen_host),
-            tcp_listen_port: get_env_cast_or("TCP_LISTEN_PORT", default.tcp_listen_port)
+            tcp_listen_port: get_env_cast_or("TCP_LISTEN_PORT", default.tcp_listen_port),
         }
     }
 }
@@ -42,7 +45,7 @@ fn get_env_cast_or<T: str::FromStr + fmt::Display>(key: &str, default: T) -> T {
     if let Ok(value_raw) = value_raw {
         match T::from_str(&value_raw) {
             Ok(value) => value,
-            Err(_) => panic!("{} is not a valid {} value!", value_raw, key)
+            Err(_) => panic!("{} is not a valid {} value!", value_raw, key),
         }
     } else {
         default
