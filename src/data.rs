@@ -21,8 +21,7 @@ pub fn parse_index_raw_data(data: Vec<u8>, collection_name: &str) -> Vec<u128> {
 
 pub fn get_index_data(config: &Config, collection_name: &str) -> Vec<u128> {
     let raw_data = read_index_file(&config, &collection_name);
-    let data = parse_index_raw_data(raw_data, &collection_name);
-    data
+    parse_index_raw_data(raw_data, &collection_name)
 }
 
 #[cfg(test)]

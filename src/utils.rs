@@ -1,5 +1,5 @@
 /// Return whether two vecs contain the same set of elements.
-pub fn vec_eq<T: Eq + PartialEq + Ord + PartialOrd + Clone>(a: &Vec<T>, b: &Vec<T>) -> bool {
+pub fn vec_eq<T: Eq + PartialEq + Ord + PartialOrd + Clone>(a: &[T], b: &[T]) -> bool {
     let mut a = a.to_vec();
     let mut b = b.to_vec();
     a.sort_by(|x, y| x.partial_cmp(y).unwrap());

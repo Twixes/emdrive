@@ -1,5 +1,4 @@
 use crate::utils::vec_eq;
-use num;
 use std::{collections::HashMap, hash::Hash};
 
 use super::Distancable;
@@ -71,6 +70,16 @@ where
     }
 }
 
+impl<P, D> Default for Tree<P, D>
+where
+    P: Distancable<D>,
+    D: num::Num + Eq + Ord + Copy + Hash,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A BK tree node.
 #[derive(Debug)]
 struct TreeNode<P, D>
@@ -116,12 +125,12 @@ where
             result.close.push(&self.position);
         }
 
-        for (_, child) in &self.children {
+        for child in self.children.values() {
             let mut sub_result = child.search(position, radius);
             result.exact.append(&mut sub_result.exact);
             result.close.append(&mut sub_result.close);
         }
-        return result;
+        result
     }
 }
 
