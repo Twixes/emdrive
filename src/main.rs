@@ -1,6 +1,6 @@
-use metrobaza::{config, server};
+use metrobaza::{config, tcp};
 
 fn main() {
     let config = config::Config::new();
-    server::start_server(config);
+    tcp::start_server(config);
 }
