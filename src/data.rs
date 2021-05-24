@@ -1,10 +1,16 @@
 use crate::{config::Config, etimeprintln, timeprintln};
-use std::{convert::TryInto, convert::TryFrom, fs, io::{self, Write}, mem, path, process};
+use std::{
+    convert::TryFrom,
+    convert::TryInto,
+    fs,
+    io::{self, Write},
+    mem, path, process,
+};
 
 pub struct Index<'a> {
     collection_name: String,
     data: Vec<u128>,
-    config: &'a Config
+    config: &'a Config,
 }
 
 impl<'a> Index<'a> {
@@ -12,7 +18,7 @@ impl<'a> Index<'a> {
         let mut index = Index {
             collection_name: collection_name.to_string(),
             data: vec![],
-            config: &config
+            config: &config,
         };
         index.sync_from_disk();
         index
@@ -46,7 +52,8 @@ impl<'a> Index<'a> {
         if raw_data_size % entry_size != 0 {
             panic!("Size of index data for collection \"{}\" must be a multiple of {} bytes, instead found {} bytes!", &self.collection_name, entry_size, raw_data_size);
         }
-        raw_data.chunks(entry_size)
+        raw_data
+            .chunks(entry_size)
             .map(|chunk| u128::from_be_bytes(chunk.try_into().unwrap()))
             .collect()
     }
@@ -63,7 +70,7 @@ impl<'a> Index<'a> {
                 let result = self.parse_index_raw_data(raw_data);
                 timeprintln!("Result: {:?}", result);
                 result
-            },
+            }
             Err(err) if err.kind() == io::ErrorKind::NotFound => {
                 self.create_empty_file().unwrap();
                 vec![]
@@ -78,12 +85,16 @@ impl<'a> Index<'a> {
         self.data.clone()
     }
 
-    pub fn sync_to_disk(&mut self,) {
+    pub fn sync_to_disk(&mut self) {
         let mut file = self.create_empty_file().unwrap();
-        let buffer: Vec<u8> = self.data.iter().flat_map(|x| {
-            let bytes: Vec<u8> = x.to_be_bytes().iter().copied().collect();
-            bytes
-        }).collect();
+        let buffer: Vec<u8> = self
+            .data
+            .iter()
+            .flat_map(|x| {
+                let bytes: Vec<u8> = x.to_be_bytes().iter().copied().collect();
+                bytes
+            })
+            .collect();
         file.write_all(buffer.as_slice()).unwrap();
     }
 }
@@ -94,7 +105,11 @@ mod tests {
 
     #[test]
     fn raw_data_parsing_works() {
-        let dummy_index = Index { collection_name: "test".to_string(), data: vec![], config: &Config::default() };
+        let dummy_index = Index {
+            collection_name: "test".to_string(),
+            data: vec![],
+            config: &Config::default(),
+        };
 
         let raw_data: Vec<u8> = vec![
             0xf0, 0x0f, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0xff,
@@ -112,7 +127,11 @@ mod tests {
         expected = "Size of index data for collection \"test\" must be a multiple of 16 bytes, instead found 17 bytes!"
     )]
     fn raw_data_parsing_panics_when_data_is_wrong_size() {
-        let dummy_index = Index { collection_name: "test".to_string(), data: vec![], config: &Config::default() };
+        let dummy_index = Index {
+            collection_name: "test".to_string(),
+            data: vec![],
+            config: &Config::default(),
+        };
 
         let raw_data: Vec<u8> = vec![
             0xf0, 0x0f, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0xff,

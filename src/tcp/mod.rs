@@ -1,7 +1,6 @@
+use crate::data;
 use crate::{config, timeprintln};
 use std::{net, str::FromStr};
-use crate::data;
-
 
 fn create_listener(tcp_listen_address: net::SocketAddr) -> net::TcpListener {
     let listener = net::TcpListener::bind(tcp_listen_address).unwrap();
@@ -25,5 +24,5 @@ pub fn start_server(config: config::Config) {
         let _stream = stream.unwrap();
 
         timeprintln!("Connection established!");
-    };
+    }
 }
