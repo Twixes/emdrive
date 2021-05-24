@@ -34,12 +34,13 @@ Let's save it.
 
 ```SQL
 INSERT INTO photos_seen (hash, url, width, height, seen_at)
-VALUES (0b11001111, "https://matloka.com/a.png", 1280, 820, Now());
+VALUES (0b11001111, "https://twixes.com/a.png", 1280, 820, Now());
 ```
 
-Now a user uploaded their image with hash `0b00001011` (binary representation of decimal `11`) to see similar occurences
-from the internet. Let's check that against Metrobaza. We'll be using the `@` distance operator, which only works
-on `METRIC KEY` columns and always returns a number.
+Now, look, a user just uploaded their image to see similar occurences of it from the internet. The search engine
+calculated that image's hash to be `0b00001011` (binary representation of decimal `11`).
+Let's check that against Metrobaza. We'll be using the `@` distance operator, which only works on `METRIC KEY` columns
+and always returns a number.
 
 ```SQL
 SELECT url, hash @ 0b00001011 AS distance FROM photos_seen WHERE distance < 4;
@@ -49,7 +50,7 @@ It's a match! The image we saved previously has a somewhat similar hash, and we 
 
 | `url`                         | `distance` |
 | ----------------------------- | ---------- |
-| `"https://matloka.com/a.png"` | `3`        |
+| `"https://twixes.com/a.png"` | `3`        |
 
 ### Data types
 
@@ -60,7 +61,7 @@ It's a match! The image we saved previously has a somewhat similar hash, and we 
 | `U32` | unsigned 32-bit integer | at least 0, up to 2³²-1 |
 | `U64` | unsigned 64-bit integer | at least 0, up to 2⁶⁴-1 |
 | `U128` | unsigned 128-bit integer | at least 0, up to 2¹²⁸-1 |
-| `Timestamp` | number milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | at least 2⁶³ ms before Unix epoch, up to 2⁶³-1 seconds after Unix epoch (around 292e6 years in either direction) |
+| `Timestamp` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | at least 2⁶³ ms before Unix epoch, up to 2⁶³-1 seconds after Unix epoch (around 292e6 years in either direction) |
 | `String` | UTF-8 string | none |
 
 ### Metrics
@@ -85,6 +86,10 @@ It's a match! The image we saved previously has a somewhat similar hash, and we 
 ### SQL
 
 ### HTTP interface
+
+## Benchmarks
+
+Postgres vs MySQL vs. ClickHouse vs. Metrobaza
 
 ## Etymology
 
