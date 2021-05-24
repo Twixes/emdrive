@@ -11,7 +11,9 @@ pub enum Delimiter {
 }
 
 impl Delimiter {
+    /// Delimiting characters that are devoid of semantics and are only used to split the text.
     const TRANSPARENT_CHARS: &'static [char] = &[' ', '\t', '\n', '\r'];
+    /// Delimiting characters that affect statement meaning. Each one is a Delimiter variant.
     const MEANINGFUL_CHARS: &'static [char] = &[',', ';', '\'', '"', '(', ')'];
 }
 
@@ -26,7 +28,10 @@ impl FromStr for Delimiter {
             "\"" => Ok(Self::DoubleQuote),
             "(" => Ok(Self::ParenthesisOpening),
             ")" => Ok(Self::ParenthesisClosing),
-            _ => Err(format!("\"{}\" does not refer to a delimiter", candidate)),
+            _ => Err(format!(
+                "\"{}\" does not refer to a meaningful delimiter",
+                candidate
+            )),
         }
     }
 }
@@ -39,8 +44,8 @@ pub enum ConstToken {
     Not,
     Exists,
     Optional,
-    Position,
-    By,
+    Metric,
+    Key,
 }
 
 impl FromStr for ConstToken {
@@ -54,8 +59,8 @@ impl FromStr for ConstToken {
             "not" => Ok(Self::Not),
             "exists" => Ok(Self::Exists),
             "optional" => Ok(Self::Optional),
-            "position" => Ok(Self::Position),
-            "by" => Ok(Self::By),
+            "metric" => Ok(Self::Metric),
+            "key" => Ok(Self::Key),
             _ => Err(format!("\"{}\" does not refer to a const token", candidate)),
         }
     }
@@ -154,10 +159,9 @@ mod tests {
     fn tokenization_works_with_create_table() {
         let statement = "CREATE TABLE IF NOT EXISTS 'test' (
             server_id optional(u64),
-            hash u128,
+            hash u128 METRIC KEY,
             sent_at timestamp
-        )
-        POSITION BY hash;";
+        );";
 
         let detected_tokens: Vec<Token> = tokenize(&statement).unwrap();
 
@@ -171,21 +175,24 @@ mod tests {
             Token::Arbitrary("test".to_string()),
             Token::Delimiting(Delimiter::SingleQuote),
             Token::Delimiting(Delimiter::ParenthesisOpening),
+            // New line
             Token::Arbitrary("server_id".to_string()),
             Token::Const(ConstToken::Optional),
             Token::Delimiting(Delimiter::ParenthesisOpening),
             Token::Type(SupportedType::U64),
             Token::Delimiting(Delimiter::ParenthesisClosing),
             Token::Delimiting(Delimiter::Comma),
+            // New line
             Token::Arbitrary("hash".to_string()),
             Token::Type(SupportedType::U128),
+            Token::Const(ConstToken::Metric),
+            Token::Const(ConstToken::Key),
             Token::Delimiting(Delimiter::Comma),
+            // New line
             Token::Arbitrary("sent_at".to_string()),
             Token::Type(SupportedType::Timestamp),
+            // New line
             Token::Delimiting(Delimiter::ParenthesisClosing),
-            Token::Const(ConstToken::Position),
-            Token::Const(ConstToken::By),
-            Token::Arbitrary("hash".to_string()),
             Token::Delimiting(Delimiter::Semicolon),
         ];
         assert!(vec_eq_exact(&detected_tokens, &expected_tokens))

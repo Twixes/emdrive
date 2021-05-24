@@ -1,6 +1,5 @@
 use crate::{config::Config, etimeprintln, timeprintln};
 use std::{
-    convert::TryFrom,
     convert::TryInto,
     fs,
     io::{self, Write},

@@ -1,4 +1,5 @@
 use crate::data;
+use crate::queries::bk;
 use crate::{config, timeprintln};
 use std::{net, str::FromStr};
 
@@ -12,7 +13,13 @@ fn create_listener(tcp_listen_address: net::SocketAddr) -> net::TcpListener {
 /// Start Metrobaza server loop.
 pub fn start_server(config: config::Config) {
     let mut index = data::Index::new("r9k", &config);
-    index.add(0xfff0f);
+    index.add(0b1001);
+    index.add(0b1110);
+    let mut tree = bk::Tree::new();
+    for element in index.get_data() {
+        tree.add(element);
+    }
+    println!("{:?}", tree.search(&0b1111u128, 2));
 
     let tcp_listen_address = net::SocketAddr::new(
         net::IpAddr::from_str(&config.tcp_listen_host).unwrap(),
