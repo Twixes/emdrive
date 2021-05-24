@@ -4,7 +4,7 @@ Database for fast similarity search within metric spaces, written in Rust.
 
 ## Design
 
-Let's say you're running an image search engine. As a fan of geese you called it Gaggle.
+Let's say you're running an image search engine. As a fan of geese you called it Gaggle.  
 Being a search engine operator, you run a bot which crawls pages on the internet.
 Every time the bot sees an image, it computes a [perceptual hash](https://en.wikipedia.org/wiki/Perceptual_hashing)
 of it and saves it, along with some other metadata, to a Metrobaza instance.
@@ -25,11 +25,11 @@ CREATE TABLE photos_seen (
 This is very similar to what in many databases would be `PRIMARY KEY`.
 The difference is that Metrobaza is explicitly oriented around the mathematical concept of
 a [metric space](https://en.wikipedia.org/wiki/Metric_space). That is so what makes is to suitable for similarity search
-AND somewhat different in its workings.
-A metric key must specify a metric. Since this is a hash, `HammingDistance` is the appropriate metric.
-If the column contained text, we'd likely go for `LevenshteinDistance`.
+AND somewhat different in its workings.  
+A metric key must specify a metric. Since this is a hash, `HammingDistance` is the appropriate metric.  
+If the column contained text, we'd likely go for `LevenshteinDistance`.  
 
-Your bot has just seen a new image!
+Your bot has just seen a new image!  
 Let's save it.
 
 ```SQL
@@ -38,7 +38,7 @@ VALUES (0b11001111, "https://twixes.com/a.png", 1280, 820, Now());
 ```
 
 Now, look, a user just uploaded their image to see similar occurences of it from the internet. The search engine
-calculated that image's hash to be `0b00001011` (binary representation of decimal `11`).
+calculated that image's hash to be `0b00001011` (binary representation of decimal `11`).  
 Let's check that against Metrobaza. We'll be using the `@` distance operator, which only works on `METRIC KEY` columns
 and always returns a number.
 
