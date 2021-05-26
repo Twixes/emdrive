@@ -6,6 +6,8 @@ use std::{
     mem, path, process,
 };
 
+pub mod rows;
+
 pub struct Index<'a> {
     collection_name: String,
     data: Vec<u128>,
@@ -29,6 +31,7 @@ impl<'a> Index<'a> {
 
     fn get_file_path(&self) -> path::PathBuf {
         path::Path::new(&self.config.state_location)
+            .join("data")
             .join(&self.collection_name)
             .join("index")
     }

@@ -1,17 +1,17 @@
 use crate::data;
 use crate::queries::bk;
 use crate::{config, timeprintln};
+use futures::prelude::*;
 use std::{net, str::FromStr};
 
-fn create_listener(tcp_listen_address: net::SocketAddr) -> net::TcpListener {
-    let listener = net::TcpListener::bind(tcp_listen_address).unwrap();
-    let local_addr = listener.local_addr().unwrap();
-    timeprintln!("TCP server listening on {}...", local_addr);
-    listener
+pub fn say_hello(state: gotham::state::State) -> (gotham::state::State, String) {
+    timeprintln!("Hello");
+    (state, "Hello!".to_string())
 }
 
 /// Start Metrobaza server loop.
-pub fn start_server(config: config::Config) {
+pub async fn start_server(config: config::Config) {
+    // Index loading
     let mut index = data::Index::new("r9k", &config);
     index.add(0b1001);
     index.add(0b1110);
@@ -21,15 +21,19 @@ pub fn start_server(config: config::Config) {
     }
     println!("{:?}", tree.search(&0b1111u128, 2));
 
+    // TCP server starting
     let tcp_listen_address = net::SocketAddr::new(
         net::IpAddr::from_str(&config.tcp_listen_host).unwrap(),
         config.tcp_listen_port,
     );
-    let listener = create_listener(tcp_listen_address);
+    let server = gotham::init_server(tcp_listen_address, || Ok(say_hello));
+    // Future to wait for Ctrl+C.
+    let signal = async {
+        tokio::signal::ctrl_c().map_err(|_| ()).await?;
+        println!("Ctrl+C pressed");
+        Ok::<(), ()>(())
+    };
 
-    for stream in listener.incoming() {
-        let _stream = stream.unwrap();
-
-        timeprintln!("Connection established!");
-    }
+    future::select(server.boxed(), signal.boxed()).await;
+    println!("Shutting down gracefully");
 }

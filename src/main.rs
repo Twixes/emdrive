@@ -1,6 +1,7 @@
 use metrobaza::{config, tcp};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let config = config::Config::new();
-    tcp::start_server(config);
+    tcp::start_server(config).await;
 }
