@@ -62,23 +62,24 @@ It's a match! The image we saved previously has a somewhat similar hash, and we 
 | `U64` | unsigned 64-bit integer | at least 0, up to 2⁶⁴-1 |
 | `U128` | unsigned 128-bit integer | at least 0, up to 2¹²⁸-1 |
 | `Timestamp` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | at least 2⁶³ ms before Unix epoch, up to 2⁶³-1 seconds after Unix epoch (around 292e6 years in either direction) |
-| `String` | UTF-8 string | none |
+| `String` | UTF-8 string | no more than 2¹⁶-1 characters |
 
 ### Metrics
 
 | Name | Description | Column types |
 | --- | --- | --- |
-| `HammingDistance` | [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) | `U32`, `U64`, `U128` |
+| `HammingDistance` | [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) | `U8`, `U16`, `U32`, `U64`, `U128` |
 <!--| `LevenshteinDistance` | [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) | `String` |-->
 
 ### Data storage
 
 ```
 /var/lib/metrobaza/
-└── gaggle
-   └── photos_seen
-      ├── data
-      └── index
+└── data
+   └── gaggle
+      └── photos_seen
+         ├── data
+         └── index
 ```
 
 ### Search
