@@ -11,7 +11,7 @@ Database for fast similarity search within metric spaces, written in Rust.
 | `UINT32` | unsigned 32-bit integer | 4 bytes | ≥ 0 and < 2³² |
 | `UINT64` | unsigned 64-bit integer | 8 bytes | ≥ 0 and < 2⁶⁴ |
 | `UINT128` | unsigned 128-bit integer | 16 bytes | ≥ 0 and < 2¹²⁸ |
-| `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ seconds after Unix epoch (around 292 million years in either direction) |
+| `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
 | `VARCHAR(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
 
 ## Design
