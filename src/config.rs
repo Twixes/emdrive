@@ -4,7 +4,7 @@ use std::{env, fmt, str};
 #[derive(Debug)]
 pub struct Config {
     /// Path to database state, i.e. saved data. Conventionally `metrobaza/` in `/var/lib/`.
-    pub state_location: String,
+    pub data_directory: String,
     /// TCP interface listener host, `127.0.0.1` by default.
     pub tcp_listen_host: String,
     /// TCP interface listener port. `8824` by default.
@@ -14,7 +14,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            state_location: "/var/lib/metrobaza/".to_string(),
+            data_directory: "/var/lib/metrobaza/data".to_string(),
             tcp_listen_host: "127.0.0.1".to_string(),
             tcp_listen_port: 8824,
         }
@@ -25,7 +25,7 @@ impl Config {
     pub fn new() -> Config {
         let default = Config::default();
         Config {
-            state_location: get_env_or("STATE_LOCATION", default.state_location),
+            data_directory: get_env_or("data_directory", default.data_directory),
             tcp_listen_host: get_env_or("TCP_LISTEN_HOST", default.tcp_listen_host),
             tcp_listen_port: get_env_cast_or("TCP_LISTEN_PORT", default.tcp_listen_port),
         }

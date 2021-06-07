@@ -6,8 +6,6 @@ use std::{
     mem, path, process,
 };
 
-pub mod rows;
-
 pub struct Index<'a> {
     collection_name: String,
     data: Vec<u128>,
@@ -30,7 +28,7 @@ impl<'a> Index<'a> {
     }
 
     fn get_file_path(&self) -> path::PathBuf {
-        path::Path::new(&self.config.state_location)
+        path::Path::new(&self.config.data_directory)
             .join("data")
             .join(&self.collection_name)
             .join("index")
@@ -44,7 +42,7 @@ impl<'a> Index<'a> {
     fn create_empty_file(&self) -> io::Result<fs::File> {
         let index_file_path = self.get_file_path();
         let index_dir_path = index_file_path.parent().unwrap();
-        std::fs::create_dir_all(index_dir_path).expect(&format!("Cannot create index file for collection {}, because its directory {} is improper! Consider changing METRO_STATE_LOCATION (currently {})", &self.collection_name, index_dir_path.to_str().unwrap(), self.config.state_location));
+        std::fs::create_dir_all(index_dir_path).expect(&format!("Cannot create index file for collection {}, because its directory {} is improper! Consider changing METRO_data_directory (currently {})", &self.collection_name, index_dir_path.to_str().unwrap(), self.config.data_directory));
         fs::File::create(index_file_path)
     }
 
