@@ -5,7 +5,7 @@ Database for fast similarity search within metric spaces, written in Rust.
 ### Data types
 
 | Name | Description | Size on disk | Value bounds |
-| --- | --- | --- |
+| --- | --- | --- | -- |
 | `UINT8` | unsigned 8-bit integer | 1 byte | ≥ 0 and < 2⁸ |
 | `UINT16` | unsigned 16-bit integer | 2 bytes | ≥ 0 and < 2¹⁶ |
 | `UINT32` | unsigned 32-bit integer | 4 bytes | ≥ 0 and < 2³² |
@@ -101,7 +101,7 @@ For instance our exemplary database has columns:
 
 This sums up to 2067 bytes. Rounding up, each row is 4096 bytes (the extra 2029 are reserved as zeroes).
 
-Why round up?
+##### Why round up?
 
 This is to reduce the number of reads and writes across disk blocks, whose size is a power of 2 – commonly 4096 bytes.
 
