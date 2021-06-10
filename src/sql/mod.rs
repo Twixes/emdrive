@@ -66,11 +66,15 @@ impl FromStr for ConstToken {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum SupportedType {
+    U8,
+    U16,
+    U32,
     U64,
     U128,
     Timestamp,
+    String,
 }
 
 impl FromStr for SupportedType {
@@ -148,6 +152,22 @@ struct ColumnDefinition {
     value_type: SupportedType,
     is_optional: bool,
 }
+
+////////////////////////
+
+struct CreateCommand;
+
+struct DropCommand;
+struct InsertCommand;
+struct SelectCommand;
+
+enum Command {
+    Create(CreateCommand),
+    Drop(DropCommand),
+    Insert(InsertCommand),
+}
+
+////////////////////////
 
 #[cfg(test)]
 mod tests {

@@ -1,6 +1,6 @@
 # Metrobaza
 
-Database for fast similarity search within metric spaces, written in Rust.
+Database management system for fast similarity search within metric spaces, written in Rust.
 
 ### Data types
 
@@ -14,14 +14,14 @@ Database for fast similarity search within metric spaces, written in Rust.
 | `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
 | `VARCHAR(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
 
-## Design
+## Story
 
 Let's say you're running an image search engine. As a fan of geese you called it Gaggle.  
 Being a search engine operator, you run a bot which crawls pages on the internet.
 Every time the bot sees an image, it computes a [perceptual hash](https://en.wikipedia.org/wiki/Perceptual_hashing)
 of it and saves it, along with some other metadata, to a Metrobaza instance.
 
-We'll be using database `gaggle`. Here's what a relevant schema may look like:
+We'll be using database `gaggle`. A relevant table schema here may be:
 
 ```SQL
 CREATE TABLE photos_seen (
@@ -40,9 +40,11 @@ a [metric space](https://en.wikipedia.org/wiki/Metric_space). That is so what ma
 AND somewhat different in its workings.  
 A metric key must specify a metric. Since this is a hash, `HammingDistance` is the appropriate metric.  
 If the column contained text, we'd likely go for `LevenshteinDistance`.  
+A primary key column can also be a metric key like so:  
+`<column_name> <TYPE> METRIC PRIMARY KEY USING <metric>`
 
-Your bot has just seen a new image!  
-Let's save it.
+Oh, your bot has just seen a new image!  
+Let's register it:
 
 ```SQL
 INSERT INTO photos_seen (hash, url, width, height, seen_at)
@@ -58,7 +60,7 @@ and is radically optimized for `METRIC KEY` columns.
 SELECT url, hash @ 0b00001011 AS distance FROM photos_seen WHERE distance < 4;
 ```
 
-It's a match! The image we saved previously has a somewhat similar hash, and we can now show it in search results.
+It's a match! The image we saved previously has a similar hash, and we can now show it in search results.
 
 | `url`                        | `distance` |
 | ---------------------------- | ---------- |
@@ -68,7 +70,6 @@ It's a match! The image we saved previously has a somewhat similar hash, and we 
 
 ```bash
 $METRO_DATA_DIRECTORY # /var/lib/metrobaza/data by default
-└── system/
 └── databases/
    └── gaggle/ # database
       └── tables/
@@ -76,18 +77,17 @@ $METRO_DATA_DIRECTORY # /var/lib/metrobaza/data by default
             └── data/ # table rows
                └── 0 # segment 0 of row data
             └── indexes/ # table indexes, used for quicker row lookup
-               └── url#bplustree # bplustree index on column url
+               └── url-bplustree # bplustree index on column url
             └── metrics/ # table metrics, used for distance-based search
-               └── hash#hamming # hamming metric on column hash
+               └── hash-hamming # hamming metric on column hash
             └── meta # table metadata
 ```
 
 #### Row data structure
 
-> General note: Metrobaza is big-endian, regardless of target architecture.
 
-Each row in a table has the same size, calculated based on table columns and then rounded up to the nearest power of 2
-OR the nearest multiple of 4096 – whichever lowest.
+Each row in a table has the same size, calculated based on table columns and then rounded up to the nearest power of 2,
+but no more than page size, which in most Metrobaza builds is 4096 bytes.
 
 For instance our exemplary database has columns:
 
@@ -99,7 +99,10 @@ For instance our exemplary database has columns:
 | height | `UINT32` | 4 content bytes |
 | seen_at | `TIMESTAMP` | 8 content bytes |
 
-This sums up to 2067 bytes. Rounding up, each row is 4096 bytes (the extra 2029 are reserved as zeroes).
+This sums up to 2067 bytes. Rounding up, each row is 4096 bytes (the extra 2029 are just padding).
+
+> Data stored by Metrobaza on disk is big-endian, meaning that less significant bytes have higher addresses
+than more significant bytes – this is basically how humans write numbers down.
 
 ##### Why round up?
 
@@ -110,6 +113,10 @@ This is to reduce the number of reads and writes across disk blocks, whose size 
 Metrobaza types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
 the table. For instance a nullable string of maximum length 20 is `NULLABLE(VARCHAR(20))`.
 Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, and so are all the other bytes of that value. Otherwise that byte is 1.
+
+#### Indexing
+
+
 
 ### Metrics
 
@@ -127,9 +134,9 @@ If a setting's environment variable is not set, its default value will be used.
 
 | Name | Type | Default value | Description |
 | --- | --- | --- | --- |
-| `data_directory` | `String` | `"/var/lib/metrobaza/data"` | Location of all data, including system tables |
-| `http_listen_host` | `String` | `"127.0.0.1"` | Host on which the HTTP server will listen |
-| `http_listen_port` | `U16` | `8824` | Port on which the HTTP server will listen |
+| `data_directory` | `STRING` | `"/var/lib/metrobaza/data"` | Location of all data, including system tables |
+| `http_listen_host` | `STRING` | `"127.0.0.1"` | Host on which the HTTP server will listen |
+| `http_listen_port` | `UINT16` | `8824` | Port on which the HTTP server will listen |
 
 ### Search
 
