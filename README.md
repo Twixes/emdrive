@@ -14,9 +14,22 @@ Database management system for fast similarity search within metric spaces, writ
 | `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
 | `VARCHAR(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
 
-## Story
+### Indexes
 
-Let's say you're running an image search engine. As a fan of geese you called it Gaggle.  
+| Name | Category | Description | Column types | Operators |
+| --- | --- | --- | --- | --- |
+| `btree` | general | [B+ tree](https://en.wikipedia.org/wiki/B+_tree) | all | `=` (equality) |
+| `emtree` | metric | [EM-tree](https://dl.gi.de/bitstream/handle/20.500.12116/648/paper31.pdf) | metric-dependent | `@` (distance) |
+
+### Metrics
+
+| Name | Description | Column types |
+| --- | --- | --- |
+| `hamming` | [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) | `UINT*` |
+
+### Story
+
+Let's imagine you're running an image search engine. As a fan of geese you called it Gaggle.  
 Being a search engine operator, you run a bot which crawls pages on the internet.
 Every time the bot sees an image, it computes a [perceptual hash](https://en.wikipedia.org/wiki/Perceptual_hashing)
 of it and saves it, along with some other metadata, to a Metrobaza instance.
@@ -25,7 +38,7 @@ We'll be using database `gaggle`. A relevant table schema here may be:
 
 ```SQL
 CREATE TABLE photos_seen (
-    hash UINT8 METRIC KEY USING hamming,
+    hash UINT8 METRIC KEY USING mtree(hamming),
     url VARCHAR(2048) PRIMARY KEY,
     width UINT32,
     height UINT32,
@@ -33,28 +46,22 @@ CREATE TABLE photos_seen (
 );
 ```
 
-> Note that column `hash` is marked with `METRIC KEY USING Hamming`!  
-This is somewhat similar to what in many databases would be `PRIMARY KEY`.
-The difference is that Metrobaza is explicitly oriented around the mathematical concept of
-a [metric space](https://en.wikipedia.org/wiki/Metric_space). That is so what makes is to suitable for similarity search
-AND somewhat different in its workings.  
-A metric key must specify a metric. Since this is a hash, `HammingDistance` is the appropriate metric.  
-If the column contained text, we'd likely go for `LevenshteinDistance`.  
-A primary key column can also be a metric key like so:  
-`<column_name> <TYPE> METRIC PRIMARY KEY USING <metric>`
+> Note that column `hash` is marked with `METRIC KEY USING hamming`!  
+While a primary key is B+ tree-based and allows for quick general lookups of rows, it's useless for distance queries.
+An EM-tree-based metric key does the job very well though. In this case, as we're comparing perceptual hashes in integer form, Hamming distance
+is the most relevant metric.
 
-Oh, your bot has just seen a new image!  
-Let's register it:
+Oh, your bot has just seen a new image! Let's register it:
 
 ```SQL
 INSERT INTO photos_seen (hash, url, width, height, seen_at)
-VALUES (0b11001111, "https://twixes.com/a.png", 1280, 820, Now());
+VALUES (0b11001111, 'https://twixes.com/a.png', 1280, 820, NOW());
 ```
 
 Now, look, a user just uploaded their image to see similar occurences of it from the internet. The search engine
 calculated that image's hash to be `0b00001011` (binary representation of decimal `11`).  
 Let's check that against Metrobaza. We'll be using the `@` distance operator, which always returns a number
-and is radically optimized for `METRIC KEY` columns.
+and is exclusively supported for `METRIC KEY` columns.
 
 ```SQL
 SELECT url, hash @ 0b00001011 AS distance FROM photos_seen WHERE distance < 4;
@@ -77,31 +84,18 @@ $METRO_DATA_DIRECTORY # /var/lib/metrobaza/data by default
             └── data/ # table rows
                └── 0 # segment 0 of row data
             └── indexes/ # table indexes, used for quicker row lookup
-               └── url-bplustree # bplustree index on column url
-            └── metrics/ # table metrics, used for distance-based search
-               └── hash-hamming # hamming metric on column hash
+               └── hash-mtree-hamming # bplustree index on column url
             └── meta # table metadata
 ```
 
 #### Row data structure
 
 
-Each row in a table has the same size, calculated based on table columns and then rounded up to the nearest power of 2,
-but no more than page size, which in most Metrobaza builds is 4096 bytes.
+Row size is the number of bytes actually needed by that specific row, rounded up to the nearest power of 2. A constraint is that a row cannot exceed 4096 bytes.
 
-For instance our exemplary database has columns:
+Variable length columns have up to 4 length bytes before the actual value.
 
-| Name | Type | Size |
-| --- | --- | --- |
-| hash | `UINT8` | 1 content byte |
-| url | `VARCHAR(2048)` | 2 offset bytes + 2048 content bytes |
-| width | `UINT32` | 4 content bytes |
-| height | `UINT32` | 4 content bytes |
-| seen_at | `TIMESTAMP` | 8 content bytes |
-
-This sums up to 2067 bytes. Rounding up, each row is 4096 bytes (the extra 2029 are just padding).
-
-> Data stored by Metrobaza on disk is big-endian, meaning that less significant bytes have higher addresses
+Data stored by Metrobaza on disk is big-endian, meaning that less significant bytes have higher addresses
 than more significant bytes – this is basically how humans write numbers down.
 
 ##### Why round up?
@@ -112,18 +106,7 @@ This is to reduce the number of reads and writes across disk blocks, whose size 
 
 Metrobaza types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
 the table. For instance a nullable string of maximum length 20 is `NULLABLE(VARCHAR(20))`.
-Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, and so are all the other bytes of that value. Otherwise that byte is 1.
-
-#### Indexing
-
-
-
-### Metrics
-
-| Name | Description | Column types |
-| --- | --- | --- |
-| `hamming` | [Hamming distance](https://en.wikipedia.org/wiki/Hamming_distance) | `UINT8`, `UINT16`, `UINT32`, `UINT64`, `UINT128` |
-<!--| `levenshtein` | [Levenshtein distance](https://en.wikipedia.org/wiki/Levenshtein_distance) | `VARCHAR` |-->
+Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, otherwise it's 1.
 
 ### Launch configuration
 
@@ -146,7 +129,8 @@ If a setting's environment variable is not set, its default value will be used.
 
 ## Benchmarks
 
-Postgres vs MySQL vs. ClickHouse vs. Metrobaza
+| Postgres | MySQL | ClickHouse | **Metrobaza** |
+| --- | --- | --- | --- |
 
 ## Etymology
 
