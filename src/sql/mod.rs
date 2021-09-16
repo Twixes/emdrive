@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq)]
 pub enum Delimiter {
@@ -43,9 +44,26 @@ pub enum ConstToken {
     If,
     Not,
     Exists,
-    Optional,
+    Nullable,
+    Primary,
     Metric,
     Key,
+}
+
+impl fmt::Display for ConstToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", match self {
+            ConstToken::Create => "CREATE",
+            ConstToken::Table => "TABLE",
+            ConstToken::If => "IF",
+            ConstToken::Not => "NOT",
+            ConstToken::Exists => "EXISTS",
+            ConstToken::Nullable => "NULLABLE",
+            ConstToken::Primary => "PRIMARY",
+            ConstToken::Metric => "METRIC",
+            ConstToken::Key => "KEY",
+        })
+    }
 }
 
 impl FromStr for ConstToken {
@@ -58,7 +76,8 @@ impl FromStr for ConstToken {
             "if" => Ok(Self::If),
             "not" => Ok(Self::Not),
             "exists" => Ok(Self::Exists),
-            "optional" => Ok(Self::Optional),
+            "nullable" => Ok(Self::Nullable),
+            "primary" => Ok(Self::Primary),
             "metric" => Ok(Self::Metric),
             "key" => Ok(Self::Key),
             _ => Err(format!("\"{}\" does not refer to a const token", candidate)),
@@ -67,24 +86,45 @@ impl FromStr for ConstToken {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum SupportedType {
-    U8,
-    U16,
-    U32,
-    U64,
-    U128,
+pub enum ValueType {
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+    UInt128,
     Timestamp,
-    String,
+    VarChar,
 }
 
-impl FromStr for SupportedType {
+#[derive(Debug, PartialEq, Eq)]
+pub enum ValueInstance {
+    UInt8(u8),
+    UInt16(u16),
+    UInt32(u32),
+    UInt64(u64),
+    UInt128(u128),
+    Timestamp(u64),
+    VarChar(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ValueTypeWrapped {
+    value_type: ValueType,
+    is_nullable: bool
+}
+
+impl FromStr for ValueType {
     type Err = String;
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         match candidate.to_lowercase().as_str() {
-            "u64" => Ok(Self::U64),
-            "u128" => Ok(Self::U128),
+            "uint8" => Ok(Self::UInt8),
+            "uint16" => Ok(Self::UInt16),
+            "uint32" => Ok(Self::UInt32),
+            "uint64" => Ok(Self::UInt64),
+            "uint128" => Ok(Self::UInt128),
             "timestamp" => Ok(Self::Timestamp),
+            "varchar" => Ok(Self::VarChar),
             _ => Err(format!(
                 "\"{}\" does not refer to a supported type",
                 candidate
@@ -92,12 +132,24 @@ impl FromStr for SupportedType {
         }
     }
 }
+
 #[derive(Debug, PartialEq)]
 pub enum Token {
     Delimiting(Delimiter),
     Const(ConstToken),
-    Type(SupportedType),
+    Type(ValueType),
     Arbitrary(String),
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Delimiting(value) => value.fmt(f),
+            Token::Const(value) => fmt::Display::fmt(&value,f),
+            Token::Type(value) => value.fmt(f),
+            Token::Arbitrary(value) => fmt::Display::fmt(&value,f),
+        }
+    }
 }
 
 impl FromStr for Token {
@@ -109,7 +161,7 @@ impl FromStr for Token {
                 Self::Delimiting(delimiting_token)
             } else if let Ok(const_token) = ConstToken::from_str(candidate) {
                 Self::Const(const_token)
-            } else if let Ok(suppoted_type) = SupportedType::from_str(candidate) {
+            } else if let Ok(suppoted_type) = ValueType::from_str(candidate) {
                 Self::Type(suppoted_type)
             } else {
                 Self::Arbitrary(candidate.to_string())
@@ -118,53 +170,76 @@ impl FromStr for Token {
     }
 }
 
-pub fn tokenize(input: &str) -> Result<Vec<Token>, String> {
-    let transparent_split_pass = input
+pub fn tokenize_statement(input: &str) -> Vec<Token> {
+    let raw_tokens = input
         .split(Delimiter::TRANSPARENT_CHARS)
         .filter(|element| !element.is_empty());
-    let mut meaningful_split_pass = Vec::<String>::new();
-    for part in transparent_split_pass {
+    let mut interpreted_tokens = Vec::<String>::new();
+    for token in raw_tokens {
         let mut current_element: String = "".to_string();
-        for character in part.chars() {
+        for character in token.chars() {
             if Delimiter::MEANINGFUL_CHARS.contains(&character) {
                 if !current_element.is_empty() {
-                    meaningful_split_pass.push(current_element.clone());
+                    interpreted_tokens.push(current_element.clone());
                 }
-                meaningful_split_pass.push(character.to_string());
+                interpreted_tokens.push(character.to_string());
                 current_element.clear();
             } else {
                 current_element.push(character);
             }
         }
         if !current_element.is_empty() {
-            meaningful_split_pass.push(current_element);
+            interpreted_tokens.push(current_element);
         }
     }
-    println!("Meaningful: {:?}", meaningful_split_pass);
-    let tokens: Vec<Token> = meaningful_split_pass
+    let tokens: Vec<Token> = interpreted_tokens
         .iter()
         .map(|candidate| Token::from_str(&candidate).unwrap())
         .collect();
-    Ok(tokens)
+    tokens
 }
+
+
+fn parse_create(tokens: &[Token]) -> Result<Statement, String>  {
+    let mut if_not_exists = false;
+    let first = &tokens[0];
+    let rest = &tokens[1..];
+    Err("Not implemented!".to_string())
+}
+
+pub fn parse_statement(input: &str) -> Result<Statement, String> {
+    let tokens = tokenize_statement(input);
+    let mut current_expected_possibilities: Vec<Token> = vec![Token::Const(ConstToken::Create)];
+    let first = &tokens[0];
+    let rest = &tokens[1..];
+    match first {
+        Token::Const(ConstToken::Create) => parse_create(rest),
+        _ => Err(format!("Expected one of: {}, got {}", ConstToken::Create, first))
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
 struct ColumnDefinition {
     name: String,
-    value_type: SupportedType,
-    is_optional: bool,
+    value_type: ValueTypeWrapped,
 }
 
-////////////////////////
+#[derive(Debug, PartialEq, Eq)]
+struct TableDefinition {
+    name: String,
+    columns: Vec<ColumnDefinition>,
+}
 
-struct CreateCommand;
+#[derive(Debug, PartialEq, Eq)]
+struct CreateTableStatement {
+    table: TableDefinition,
+    if_not_exists: bool
+}
 
-struct DropCommand;
-struct InsertCommand;
-struct SelectCommand;
 
-enum Command {
-    Create(CreateCommand),
-    Drop(DropCommand),
-    Insert(InsertCommand),
+#[derive(Debug, PartialEq, Eq)]
+pub enum Statement {
+    CreateTable(CreateTableStatement),
 }
 
 ////////////////////////
@@ -178,12 +253,12 @@ mod tests {
     #[test]
     fn tokenization_works_with_create_table() {
         let statement = "CREATE TABLE IF NOT EXISTS 'test' (
-            server_id optional(u64),
-            hash u128 METRIC KEY,
-            sent_at timestamp
+            server_id nullable(UINT64),
+            hash UINT128 METRIC KEY,
+            sent_at TIMESTAMP
         );";
 
-        let detected_tokens: Vec<Token> = tokenize(&statement).unwrap();
+        let detected_tokens: Vec<Token> = tokenize_statement(&statement);
 
         let expected_tokens: Vec<Token> = vec![
             Token::Const(ConstToken::Create),
@@ -197,20 +272,20 @@ mod tests {
             Token::Delimiting(Delimiter::ParenthesisOpening),
             // New line
             Token::Arbitrary("server_id".to_string()),
-            Token::Const(ConstToken::Optional),
+            Token::Const(ConstToken::Nullable),
             Token::Delimiting(Delimiter::ParenthesisOpening),
-            Token::Type(SupportedType::U64),
+            Token::Type(ValueType::UInt64),
             Token::Delimiting(Delimiter::ParenthesisClosing),
             Token::Delimiting(Delimiter::Comma),
             // New line
             Token::Arbitrary("hash".to_string()),
-            Token::Type(SupportedType::U128),
+            Token::Type(ValueType::UInt128),
             Token::Const(ConstToken::Metric),
             Token::Const(ConstToken::Key),
             Token::Delimiting(Delimiter::Comma),
             // New line
             Token::Arbitrary("sent_at".to_string()),
-            Token::Type(SupportedType::Timestamp),
+            Token::Type(ValueType::Timestamp),
             // New line
             Token::Delimiting(Delimiter::ParenthesisClosing),
             Token::Delimiting(Delimiter::Semicolon),
@@ -221,10 +296,10 @@ mod tests {
     #[test]
     fn tokenization_is_case_sensitive_and_insensitive_properly() {
         let statement = "CREATE table If nOT exists 'TEST' (
-            serverId optionAl(U64)
+            serverId nullable(Uint64)
         )";
 
-        let detected_tokens: Vec<Token> = tokenize(&statement).unwrap();
+        let detected_tokens = tokenize_statement(&statement);
 
         let expected_tokens: Vec<Token> = vec![
             Token::Const(ConstToken::Create),
@@ -237,25 +312,32 @@ mod tests {
             Token::Delimiting(Delimiter::SingleQuote),
             Token::Delimiting(Delimiter::ParenthesisOpening),
             Token::Arbitrary("serverId".to_string()),
-            Token::Const(ConstToken::Optional),
+            Token::Const(ConstToken::Nullable),
             Token::Delimiting(Delimiter::ParenthesisOpening),
-            Token::Type(SupportedType::U64),
+            Token::Type(ValueType::UInt64),
             Token::Delimiting(Delimiter::ParenthesisClosing),
             Token::Delimiting(Delimiter::ParenthesisClosing),
         ];
         assert!(vec_eq_exact(&detected_tokens, &expected_tokens))
     }
-}
 
-/*
-CREATE TABLE IF NOT EXISTS 'test' (
-            server_id optional(u64),
-            channel_id optional(u64),
-            user_id optional(u64),
-            attachment_id u64,
-            message_id u64,
-            hash u128,
-            sent_at timestamp
-        )
-        POSITION BY hash;
-*/
+    #[test]
+    fn parsing_works_with_create_table() {
+        let statement = "CREATE TABLE IF NOT EXISTS 'test' (
+            server_id nullable(UINT64),
+            hash UINT128 METRIC KEY,
+            sent_at TIMESTAMP
+        );";
+
+        let detected_statement = parse_statement(&statement).unwrap();
+
+        assert_eq!(detected_statement, Statement::CreateTable(CreateTableStatement{
+            table: TableDefinition{name:"test".to_string() ,columns: vec![
+                ColumnDefinition{name: "server_id".to_string(), value_type: ValueTypeWrapped { value_type: ValueType::UInt64, is_nullable: true}},
+                ColumnDefinition{name: "hash".to_string(), value_type: ValueTypeWrapped { value_type: ValueType::UInt128, is_nullable: false}},
+                ColumnDefinition{name: "sent_at".to_string(), value_type: ValueTypeWrapped { value_type: ValueType::Timestamp, is_nullable: false}},
+            ]},
+            if_not_exists: true
+        }))
+    }
+}
