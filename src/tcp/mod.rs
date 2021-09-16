@@ -1,5 +1,4 @@
 use crate::data;
-use crate::queries::bk;
 use crate::{config, timeprintln};
 use futures::prelude::*;
 use std::{net, str::FromStr};
@@ -11,16 +10,6 @@ pub fn say_hello(state: gotham::state::State) -> (gotham::state::State, String) 
 
 /// Start Metrobaza server loop.
 pub async fn start_server(config: config::Config) {
-    // Index loading
-    let mut index = data::Index::new("r9k", &config);
-    index.add(0b1001);
-    index.add(0b1110);
-    let mut tree = bk::Tree::new();
-    for element in index.get_data() {
-        tree.add(element);
-    }
-    println!("{:?}", tree.search(&0b1111u128, 2));
-
     // TCP server starting
     let tcp_listen_address = net::SocketAddr::new(
         net::IpAddr::from_str(&config.tcp_listen_host).unwrap(),

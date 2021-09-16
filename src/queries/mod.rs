@@ -1,5 +1,3 @@
-pub mod bk;
-
 use std::hash::Hash;
 
 /// Trait for calculating distances used in the BK tree structure.
