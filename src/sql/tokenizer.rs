@@ -229,8 +229,6 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::vec_eq_exact;
-
     use super::*;
 
     #[test]
