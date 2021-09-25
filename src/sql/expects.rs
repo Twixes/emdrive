@@ -80,6 +80,19 @@ pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
     }
 }
 
+pub fn expect_next_token<'t>(tokens: &'t [Token]) -> ExpectResult<'t, &'t Token> {
+    match tokens.first() {
+        Some(found_token) => Ok(ExpectOk {
+            rest: &tokens[1..],
+            tokens_consumed_count: 1,
+            outcome: found_token,
+        }),
+        None => Err(SyntaxError(
+            "Expected a token, instead found end of statement.".to_string(),
+        )),
+    }
+}
+
 pub fn expect_end_of_statement<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ()> {
     match tokens.first() {
         None => Ok(ExpectOk {

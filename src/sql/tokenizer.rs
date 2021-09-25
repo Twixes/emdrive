@@ -228,10 +228,17 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
                 interpreted_tokens.push(current_element);
             }
         }
-        tokens.extend(interpreted_tokens.iter().map(|candidate| Token {
-            value: TokenValue::from_str(&candidate).unwrap(),
-            line_number: lineIndex + 1,
-        }))
+        tokens.extend(
+            interpreted_tokens
+                .iter()
+                .map(|candidate| Token {
+                    value: TokenValue::from_str(&candidate).unwrap(),
+                    line_number: lineIndex + 1,
+                })
+                .take_while(|token_value| {
+                    token_value.value != TokenValue::Delimiting(Delimiter::Semicolon)
+                }),
+        )
     }
     tokens
 }
@@ -337,10 +344,6 @@ mod tests {
             // New line
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
-                line_number: 5,
-            },
-            Token {
-                value: TokenValue::Delimiting(Delimiter::Semicolon),
                 line_number: 5,
             },
         ];
