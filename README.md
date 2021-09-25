@@ -129,7 +129,7 @@ If a setting's environment variable is not set, its default value will be used.
 
 ## Benchmarks
 
-| Postgres | MySQL | ClickHouse | **Metrobaza** |
+| Postgres | MySQL | ClickHouse | ⚡️ Metrobaza |
 | --- | --- | --- | --- |
 
 ## Etymology
