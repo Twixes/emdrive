@@ -3,12 +3,12 @@ use super::expects::*;
 use super::tokenizer::*;
 
 fn parse_create_table(tokens: &[Token]) -> Result<CreateTableStatement, SyntaxError> {
-    let (if_not_exists, rest) = match expect_token_sequence(
+    let (if_not_exists, rest) = match expect_token_values_sequence(
         tokens,
         &[
-            Token::Const(ConstToken::If),
-            Token::Const(ConstToken::Not),
-            Token::Const(ConstToken::Exists),
+            TokenValue::Const(Keyword::If),
+            TokenValue::Const(Keyword::Not),
+            TokenValue::Const(Keyword::Exists),
         ],
     ) {
         Ok(ExpectOk { rest, .. }) => (true, rest),
@@ -28,17 +28,18 @@ fn parse_create_table(tokens: &[Token]) -> Result<CreateTableStatement, SyntaxEr
 
 fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
     match tokens.first() {
-        Some(Token::Const(ConstToken::Table)) => {
-            Ok(Statement::CreateTable(parse_create_table(&tokens[1..])?))
-        }
+        Some(Token {
+            value: TokenValue::Const(Keyword::Table),
+            ..
+        }) => Ok(Statement::CreateTable(parse_create_table(&tokens[1..])?)),
         Some(wrong_token) => Err(SyntaxError(format!(
             "Expected `{}`, instead found `{}`.",
-            ConstToken::Table,
+            Keyword::Table,
             wrong_token
         ))),
         None => Err(SyntaxError(format!(
             "Expected `{}`, instead found end of statement.",
-            ConstToken::Table
+            Keyword::Table
         ))),
     }
 }
@@ -46,15 +47,18 @@ fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
     let tokens = tokenize_statement(input);
     match tokens.first() {
-        Some(Token::Const(ConstToken::Create)) => parse_create(&tokens[1..]),
+        Some(Token {
+            value: TokenValue::Const(Keyword::Create),
+            ..
+        }) => parse_create(&tokens[1..]),
         Some(wrong_token) => Err(SyntaxError(format!(
             "Expected `{}`, instead found `{}`.",
-            ConstToken::Create,
+            Keyword::Create,
             wrong_token
         ))),
         None => Err(SyntaxError(format!(
             "Expected `{}`, instead found end of statement.",
-            ConstToken::Create
+            Keyword::Create
         ))),
     }
 }
@@ -92,22 +96,22 @@ mod tests {
                     columns: vec![
                         ColumnDefinition {
                             name: "server_id".to_string(),
-                            value_type: ValueTypeWrapped {
-                                value_type: ValueType::UInt64,
+                            data_type: DataTypeWrapped {
+                                data_type: DataType::UInt64,
                                 is_nullable: true
                             }
                         },
                         ColumnDefinition {
                             name: "hash".to_string(),
-                            value_type: ValueTypeWrapped {
-                                value_type: ValueType::UInt128,
+                            data_type: DataTypeWrapped {
+                                data_type: DataType::UInt128,
                                 is_nullable: false
                             }
                         },
                         ColumnDefinition {
                             name: "sent_at".to_string(),
-                            value_type: ValueTypeWrapped {
-                                value_type: ValueType::Timestamp,
+                            data_type: DataTypeWrapped {
+                                data_type: DataType::Timestamp,
                                 is_nullable: false
                             }
                         },

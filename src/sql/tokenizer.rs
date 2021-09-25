@@ -15,8 +15,6 @@ pub enum Delimiter {
 }
 
 impl Delimiter {
-    /// Delimiting characters that are devoid of semantics and are only used to split the text.
-    const TRANSPARENT_CHARS: &'static [char] = &[' ', '\t', '\n', '\r'];
     /// Delimiting characters that affect statement meaning. Each one is a Delimiter variant.
     const MEANINGFUL_CHARS: &'static [char] = &[',', ';', '\'', '"', '(', ')'];
 }
@@ -58,7 +56,7 @@ impl FromStr for Delimiter {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum ConstToken {
+pub enum Keyword {
     Create,
     Table,
     If,
@@ -70,27 +68,27 @@ pub enum ConstToken {
     Key,
 }
 
-impl fmt::Display for ConstToken {
+impl fmt::Display for Keyword {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                ConstToken::Create => "CREATE",
-                ConstToken::Table => "TABLE",
-                ConstToken::If => "IF",
-                ConstToken::Not => "NOT",
-                ConstToken::Exists => "EXISTS",
-                ConstToken::Nullable => "NULLABLE",
-                ConstToken::Primary => "PRIMARY",
-                ConstToken::Metric => "METRIC",
-                ConstToken::Key => "KEY",
+                Keyword::Create => "CREATE",
+                Keyword::Table => "TABLE",
+                Keyword::If => "IF",
+                Keyword::Not => "NOT",
+                Keyword::Exists => "EXISTS",
+                Keyword::Nullable => "NULLABLE",
+                Keyword::Primary => "PRIMARY",
+                Keyword::Metric => "METRIC",
+                Keyword::Key => "KEY",
             }
         )
     }
 }
 
-impl FromStr for ConstToken {
+impl FromStr for Keyword {
     type Err = String;
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
@@ -110,7 +108,7 @@ impl FromStr for ConstToken {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ValueType {
+pub enum DataType {
     UInt8,
     UInt16,
     UInt32,
@@ -132,12 +130,12 @@ pub enum ValueInstance {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct ValueTypeWrapped {
-    pub value_type: ValueType,
+pub struct DataTypeWrapped {
+    pub data_type: DataType,
     pub is_nullable: bool,
 }
 
-impl FromStr for ValueType {
+impl FromStr for DataType {
     type Err = String;
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
@@ -158,55 +156,46 @@ impl FromStr for ValueType {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Token {
+pub enum TokenValue {
     Delimiting(Delimiter),
-    Const(ConstToken),
-    Type(ValueType),
+    Const(Keyword),
+    Type(DataType),
     Arbitrary(String),
 }
 
-impl fmt::Display for Token {
+impl fmt::Display for TokenValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Delimiting(value) => fmt::Display::fmt(&value, f),
-            Token::Const(value) => fmt::Display::fmt(&value, f),
-            Token::Type(value) => value.fmt(f),
-            Token::Arbitrary(value) => fmt::Display::fmt(&value, f),
+            Self::Delimiting(value) => fmt::Display::fmt(&value, f),
+            Self::Const(value) => fmt::Display::fmt(&value, f),
+            Self::Type(value) => value.fmt(f),
+            Self::Arbitrary(value) => fmt::Display::fmt(&value, f),
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
-pub struct TokenSequence<'a>(pub &'a [Token]);
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct Token {
+    pub value: TokenValue,
+    pub line_number: usize,
+}
 
-impl<'a> fmt::Display for TokenSequence<'a> {
+impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let parts: Vec<_> = self.0.into_iter().map(|i| i.to_string()).collect();
-        write!(f, "{}", parts.join(" "))
+        write!(f, "`{}` at line {}", self.value, self.line_number)
     }
 }
 
-impl<'a, Idx> std::ops::Index<Idx> for TokenSequence<'a>
-where
-    Idx: std::slice::SliceIndex<[Token]>,
-{
-    type Output = Idx::Output;
-
-    fn index(&self, index: Idx) -> &Self::Output {
-        &self.0[index]
-    }
-}
-
-impl FromStr for Token {
+impl FromStr for TokenValue {
     type Err = ();
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         Ok(
             if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
                 Self::Delimiting(delimiting_token)
-            } else if let Ok(const_token) = ConstToken::from_str(candidate) {
+            } else if let Ok(const_token) = Keyword::from_str(candidate) {
                 Self::Const(const_token)
-            } else if let Ok(suppoted_type) = ValueType::from_str(candidate) {
+            } else if let Ok(suppoted_type) = DataType::from_str(candidate) {
                 Self::Type(suppoted_type)
             } else {
                 Self::Arbitrary(candidate.to_string())
@@ -216,31 +205,34 @@ impl FromStr for Token {
 }
 
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
-    let raw_tokens = input
-        .split(Delimiter::TRANSPARENT_CHARS)
-        .filter(|element| !element.is_empty());
-    let mut interpreted_tokens = Vec::<String>::new();
-    for token in raw_tokens {
-        let mut current_element: String = "".to_string();
-        for character in token.chars() {
-            if Delimiter::MEANINGFUL_CHARS.contains(&character) {
-                if !current_element.is_empty() {
-                    interpreted_tokens.push(current_element.clone());
+    let mut tokens = Vec::<Token>::new();
+    for (lineIndex, line) in input.split("\n").enumerate() {
+        let raw_tokens = line
+            .split_whitespace()
+            .filter(|element| !element.is_empty());
+        let mut interpreted_tokens = Vec::<String>::new();
+        for token in raw_tokens {
+            let mut current_element: String = "".to_string();
+            for character in token.chars() {
+                if Delimiter::MEANINGFUL_CHARS.contains(&character) {
+                    if !current_element.is_empty() {
+                        interpreted_tokens.push(current_element.clone());
+                    }
+                    interpreted_tokens.push(character.to_string());
+                    current_element.clear();
+                } else {
+                    current_element.push(character);
                 }
-                interpreted_tokens.push(character.to_string());
-                current_element.clear();
-            } else {
-                current_element.push(character);
+            }
+            if !current_element.is_empty() {
+                interpreted_tokens.push(current_element);
             }
         }
-        if !current_element.is_empty() {
-            interpreted_tokens.push(current_element);
-        }
+        tokens.extend(interpreted_tokens.iter().map(|candidate| Token {
+            value: TokenValue::from_str(&candidate).unwrap(),
+            line_number: lineIndex + 1,
+        }))
     }
-    let tokens: Vec<Token> = interpreted_tokens
-        .iter()
-        .map(|candidate| Token::from_str(&candidate).unwrap())
-        .collect();
     tokens
 }
 
@@ -259,32 +251,98 @@ mod tests {
         let detected_tokens = tokenize_statement(&statement);
 
         let expected_tokens = [
-            Token::Const(ConstToken::Create),
-            Token::Const(ConstToken::Table),
-            Token::Const(ConstToken::If),
-            Token::Const(ConstToken::Not),
-            Token::Const(ConstToken::Exists),
-            Token::Arbitrary("test".to_string()),
-            Token::Delimiting(Delimiter::ParenthesisOpening),
+            Token {
+                value: TokenValue::Const(Keyword::Create),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Table),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::If),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Not),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Exists),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Arbitrary("test".to_string()),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 1,
+            },
             // New line
-            Token::Arbitrary("server_id".to_string()),
-            Token::Const(ConstToken::Nullable),
-            Token::Delimiting(Delimiter::ParenthesisOpening),
-            Token::Type(ValueType::UInt64),
-            Token::Delimiting(Delimiter::ParenthesisClosing),
-            Token::Delimiting(Delimiter::Comma),
+            Token {
+                value: TokenValue::Arbitrary("server_id".to_string()),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Nullable),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Type(DataType::UInt64),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 2,
+            },
             // New line
-            Token::Arbitrary("hash".to_string()),
-            Token::Type(ValueType::UInt128),
-            Token::Const(ConstToken::Metric),
-            Token::Const(ConstToken::Key),
-            Token::Delimiting(Delimiter::Comma),
+            Token {
+                value: TokenValue::Arbitrary("hash".to_string()),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Type(DataType::UInt128),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Metric),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Key),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 3,
+            },
             // New line
-            Token::Arbitrary("sent_at".to_string()),
-            Token::Type(ValueType::Timestamp),
+            Token {
+                value: TokenValue::Arbitrary("sent_at".to_string()),
+                line_number: 4,
+            },
+            Token {
+                value: TokenValue::Type(DataType::Timestamp),
+                line_number: 4,
+            },
             // New line
-            Token::Delimiting(Delimiter::ParenthesisClosing),
-            Token::Delimiting(Delimiter::Semicolon),
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 5,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Semicolon),
+                line_number: 5,
+            },
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }
@@ -298,19 +356,58 @@ mod tests {
         let detected_tokens = tokenize_statement(&statement);
 
         let expected_tokens = [
-            Token::Const(ConstToken::Create),
-            Token::Const(ConstToken::Table),
-            Token::Const(ConstToken::If),
-            Token::Const(ConstToken::Not),
-            Token::Const(ConstToken::Exists),
-            Token::Arbitrary("TEST".to_string()),
-            Token::Delimiting(Delimiter::ParenthesisOpening),
-            Token::Arbitrary("serverId".to_string()),
-            Token::Const(ConstToken::Nullable),
-            Token::Delimiting(Delimiter::ParenthesisOpening),
-            Token::Type(ValueType::UInt64),
-            Token::Delimiting(Delimiter::ParenthesisClosing),
-            Token::Delimiting(Delimiter::ParenthesisClosing),
+            Token {
+                value: TokenValue::Const(Keyword::Create),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Table),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::If),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Not),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Exists),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Arbitrary("TEST".to_string()),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Arbitrary("serverId".to_string()),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Nullable),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Type(DataType::UInt64),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 3,
+            },
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }

@@ -11,52 +11,21 @@ pub type ExpectResult<'t, O> = Result<ExpectOk<'t, O>, SyntaxError>;
 
 // Generic expects
 
-pub fn expect_token_sequence<'t>(
+pub fn expect_token_value<'t>(
     tokens: &'t [Token],
-    expected_tokens: &[Token],
-) -> ExpectResult<'t, ()> {
-    let expected_token_count = expected_tokens.len();
-    let found_token_count = tokens.len();
-    if found_token_count == 0 {
-        Err(SyntaxError(format!(
-            "Expected `{}`, instead found end of statement.",
-            TokenSequence(expected_tokens)
-        )))
-    } else if found_token_count < expected_token_count {
-        Err(SyntaxError(format!(
-            "Expected `{}`, instead found just `{}`.",
-            TokenSequence(expected_tokens),
-            TokenSequence(tokens)
-        )))
-    } else {
-        let found_tokens: &[Token] = &tokens[..expected_token_count];
-        if found_tokens == expected_tokens {
-            Ok(ExpectOk {
-                rest: &tokens[expected_token_count..],
-                tokens_consumed_count: expected_token_count,
-                outcome: (),
-            })
-        } else {
-            Err(SyntaxError(format!(
-                "Expected `{}`, instead found `{}`.",
-                TokenSequence(expected_tokens),
-                TokenSequence(found_tokens)
-            )))
-        }
-    }
-}
-
-pub fn expect_token_single<'t>(
-    tokens: &'t [Token],
-    expected_token: &Token,
+    expected_token_value: &TokenValue,
 ) -> ExpectResult<'t, ()> {
     match tokens.first() {
-        None | Some(Token::Delimiting(Delimiter::Semicolon)) => Err(SyntaxError(format!(
+        None
+        | Some(Token {
+            value: TokenValue::Delimiting(Delimiter::Semicolon),
+            ..
+        }) => Err(SyntaxError(format!(
             "Expected `{}`, instead found end of statement.",
-            expected_token
+            expected_token_value
         ))),
         Some(found_token) => {
-            if found_token == expected_token {
+            if &found_token.value == expected_token_value {
                 Ok(ExpectOk {
                     rest: &tokens[1..],
                     tokens_consumed_count: 1,
@@ -64,26 +33,48 @@ pub fn expect_token_single<'t>(
                 })
             } else {
                 Err(SyntaxError(format!(
-                    "Expected `{}`, instead found `{}`.",
-                    expected_token, found_token
+                    "Expected `{}`, instead found {}.",
+                    expected_token_value, found_token
                 )))
             }
         }
     }
 }
 
+pub fn expect_token_values_sequence<'t>(
+    tokens: &'t [Token],
+    expected_token_values: &[TokenValue],
+) -> ExpectResult<'t, ()> {
+    for (token_index, expected_token_value) in expected_token_values.iter().enumerate() {
+        expect_token_value(&tokens[token_index..], expected_token_value)?;
+    }
+    let tokens_consumed_count = expected_token_values.len();
+    Ok(ExpectOk {
+        rest: &tokens[tokens_consumed_count..],
+        tokens_consumed_count,
+        outcome: (),
+    })
+}
+
 pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
     match tokens.first() {
-        None | Some(Token::Delimiting(Delimiter::Semicolon)) => Err(SyntaxError(
+        None
+        | Some(Token {
+            value: TokenValue::Delimiting(Delimiter::Semicolon),
+            ..
+        }) => Err(SyntaxError(
             "Expected an identifier, instead found end of statement.".to_string(),
         )),
-        Some(Token::Arbitrary(value)) => Ok(ExpectOk {
+        Some(Token {
+            value: TokenValue::Arbitrary(value),
+            ..
+        }) => Ok(ExpectOk {
             rest: &tokens[1..],
             tokens_consumed_count: 1,
             outcome: value.to_owned(),
         }),
         Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected an identifier, instead found `{}`.",
+            "Expected an identifier, instead found {}.",
             wrong_token
         ))),
     }
@@ -96,7 +87,10 @@ pub fn expect_end_of_statement<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ()> 
             tokens_consumed_count: 0,
             outcome: (),
         }),
-        Some(Token::Delimiting(Delimiter::Semicolon)) => {
+        Some(Token {
+            value: TokenValue::Delimiting(Delimiter::Semicolon),
+            ..
+        }) => {
             if tokens.len() > 1 {
                 Err(SyntaxError("Found tokens after a semicolon! Only a single statement at once can be provided.".to_string()))
             } else {
@@ -118,15 +112,17 @@ pub fn expect_enclosed<'t, O>(
     tokens: &'t [Token],
     expect_inside: fn(&'t [Token]) -> ExpectResult<'t, O>,
 ) -> ExpectResult<'t, O> {
-    let ExpectOk { rest, .. } =
-        expect_token_single(tokens, &Token::Delimiting(Delimiter::ParenthesisOpening))?;
+    let ExpectOk { rest, .. } = expect_token_value(
+        tokens,
+        &TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+    )?;
     let ExpectOk {
         rest,
         tokens_consumed_count,
         outcome,
     } = expect_inside(rest)?;
     let ExpectOk { rest, .. } =
-        expect_token_single(rest, &Token::Delimiting(Delimiter::ParenthesisClosing))?;
+        expect_token_value(rest, &TokenValue::Delimiting(Delimiter::ParenthesisClosing))?;
     let tokens_consumed_count = tokens_consumed_count + 2; // Account for parentheses
     Ok(ExpectOk {
         rest,
@@ -142,22 +138,20 @@ pub fn expect_comma_separated<'t, O>(
     let mut tokens_consumed_total_count = 0;
     let mut outcomes = Vec::<O>::new();
     loop {
-        match expect_element(&tokens[tokens_consumed_total_count..]) {
-            Err(_) => break,
-            Ok(ExpectOk {
-                tokens_consumed_count,
-                outcome,
-                ..
-            }) => {
-                tokens_consumed_total_count += tokens_consumed_count;
-                outcomes.push(outcome);
-            }
-        }
-        match expect_token_single(
+        // Parse next element
+        let ExpectOk {
+            tokens_consumed_count,
+            outcome,
+            ..
+        } = expect_element(&tokens[tokens_consumed_total_count..])?;
+        tokens_consumed_total_count += tokens_consumed_count;
+        outcomes.push(outcome);
+        // Check for the comma (trailing comma disallowed)
+        match expect_token_value(
             &tokens[tokens_consumed_total_count..],
-            &Token::Delimiting(Delimiter::Comma),
+            &TokenValue::Delimiting(Delimiter::Comma),
         ) {
-            Err(_) => break,
+            Err(_) => break, // If there's no comma after this element, it's time to break out of the loop
             _ => {
                 tokens_consumed_total_count += 1;
             }
@@ -175,7 +169,7 @@ pub fn expect_comma_separated<'t, O>(
 #[derive(Debug, PartialEq, Eq)]
 pub struct ColumnDefinition {
     pub name: String,
-    pub value_type: ValueTypeWrapped,
+    pub data_type: DataTypeWrapped,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -184,15 +178,15 @@ pub struct TableDefinition {
     pub columns: Vec<ColumnDefinition>,
 }
 
-pub fn expect_value_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ValueTypeWrapped> {
+pub fn expect_data_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeWrapped> {
     let mut tokens_consumed_count = 0;
     let mut is_nullable = false;
-    let value_type: ValueType;
+    let data_type: DataType;
     let nullable_sequence = &[
-        Token::Const(ConstToken::Nullable),
-        Token::Delimiting(Delimiter::ParenthesisOpening),
+        TokenValue::Const(Keyword::Nullable),
+        TokenValue::Delimiting(Delimiter::ParenthesisOpening),
     ];
-    match expect_token_sequence(tokens, nullable_sequence) {
+    match expect_token_values_sequence(tokens, nullable_sequence) {
         Ok(ExpectOk { outcome: (), .. }) => {
             tokens_consumed_count += nullable_sequence.len();
             is_nullable = true;
@@ -200,23 +194,30 @@ pub fn expect_value_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Va
         _ => (),
     };
     match tokens[tokens_consumed_count..].first() {
-        None | Some(Token::Delimiting(Delimiter::Semicolon)) => {
+        None
+        | Some(Token {
+            value: TokenValue::Delimiting(Delimiter::Semicolon),
+            ..
+        }) => {
             return Err(SyntaxError(if is_nullable {
                 "Expected a type, instead found end of statement.".to_string()
             } else {
                 "Expected a type or `NULLABLE(`, instead found end of statement.".to_string()
             }))
         }
-        Some(Token::Type(found_value_type)) => {
+        Some(Token {
+            value: TokenValue::Type(found_data_type),
+            ..
+        }) => {
             tokens_consumed_count += 1;
-            value_type = *found_value_type;
+            data_type = *found_data_type;
         }
         Some(wrong_token) => {
             return Err(SyntaxError(if is_nullable {
-                format!("Expected a type, instead found `{}`.", wrong_token)
+                format!("Expected a type, instead found {}.", wrong_token)
             } else {
                 format!(
-                    "Expected a type or `NULLABLE(`, instead found `{}`.",
+                    "Expected a type or `NULLABLE(`, instead found {}.",
                     wrong_token
                 )
             }))
@@ -224,22 +225,29 @@ pub fn expect_value_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Va
     };
     if is_nullable {
         match tokens[tokens_consumed_count..].first() {
-            None | Some(Token::Delimiting(Delimiter::Semicolon)) => {
+            None
+            | Some(Token {
+                value: TokenValue::Delimiting(Delimiter::Semicolon),
+                ..
+            }) => {
                 return Err(SyntaxError(
                     "Expected a closing parenthesis, instead found end of statement.".to_string(),
                 ))
             }
-            Some(Token::Delimiting(Delimiter::ParenthesisClosing)) => Ok(ExpectOk {
+            Some(Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                ..
+            }) => Ok(ExpectOk {
                 rest: &tokens[tokens_consumed_count + 1..],
                 tokens_consumed_count: tokens_consumed_count + 1,
-                outcome: ValueTypeWrapped {
-                    value_type,
+                outcome: DataTypeWrapped {
+                    data_type,
                     is_nullable,
                 },
             }),
             Some(wrong_token) => {
                 return Err(SyntaxError(format!(
-                    "Expected a closing parenthesis, instead found `{}`.",
+                    "Expected a closing parenthesis, instead found {}.",
                     wrong_token
                 )))
             }
@@ -248,8 +256,8 @@ pub fn expect_value_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Va
         Ok(ExpectOk {
             rest: &tokens[tokens_consumed_count..],
             tokens_consumed_count,
-            outcome: ValueTypeWrapped {
-                value_type,
+            outcome: DataTypeWrapped {
+                data_type,
                 is_nullable,
             },
         })
@@ -264,13 +272,13 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
     } = expect_identifier(tokens)?;
     let ExpectOk {
         rest,
-        tokens_consumed_count: tokens_consumed_count_value_type,
-        outcome: value_type,
-    } = expect_value_type_wrapped(rest)?;
+        tokens_consumed_count: tokens_consumed_count_data_type,
+        outcome: data_type,
+    } = expect_data_type_wrapped(rest)?;
     Ok(ExpectOk {
         rest,
-        tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_value_type,
-        outcome: ColumnDefinition { name, value_type },
+        tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_data_type,
+        outcome: ColumnDefinition { name, data_type },
     })
 }
 
@@ -306,16 +314,25 @@ mod expect_token_sequence_tests {
     #[test]
     fn returns_ok() {
         assert_eq!(
-            expect_token_sequence(
+            expect_token_values_sequence(
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Const(ConstToken::Exists)
+                    Token {
+                        value: TokenValue::Const(Keyword::If),
+                        line_number: 1
+                    },
+                    Token {
+                        value: TokenValue::Const(Keyword::Not),
+                        line_number: 1
+                    },
+                    Token {
+                        value: TokenValue::Const(Keyword::Exists),
+                        line_number: 1
+                    }
                 ],
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Const(ConstToken::Exists),
+                    TokenValue::Const(Keyword::If),
+                    TokenValue::Const(Keyword::Not),
+                    TokenValue::Const(Keyword::Exists),
                 ]
             ),
             Ok(ExpectOk {
@@ -329,20 +346,29 @@ mod expect_token_sequence_tests {
     #[test]
     fn returns_error_if_third_token_invalid() {
         assert_eq!(
-            expect_token_sequence(
+            expect_token_values_sequence(
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Arbitrary("xyz".to_string())
+                    Token {
+                        value: TokenValue::Const(Keyword::If),
+                        line_number: 1
+                    },
+                    Token {
+                        value: TokenValue::Const(Keyword::Not),
+                        line_number: 1
+                    },
+                    Token {
+                        value: TokenValue::Arbitrary("xyz".to_string()),
+                        line_number: 1
+                    }
                 ],
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Const(ConstToken::Exists),
+                    TokenValue::Const(Keyword::If),
+                    TokenValue::Const(Keyword::Not),
+                    TokenValue::Const(Keyword::Exists),
                 ]
             ),
             Err(SyntaxError(
-                "Expected `IF NOT EXISTS`, instead found `IF NOT xyz`.".to_string()
+                "Expected `EXISTS`, instead found `xyz` at line 1.".to_string()
             ))
         )
     }
@@ -350,16 +376,19 @@ mod expect_token_sequence_tests {
     #[test]
     fn returns_error_if_too_few_tokens() {
         assert_eq!(
-            expect_token_sequence(
-                &[Token::Const(ConstToken::If)],
+            expect_token_values_sequence(
+                &[Token {
+                    value: TokenValue::Const(Keyword::If),
+                    line_number: 1
+                }],
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Const(ConstToken::Exists),
+                    TokenValue::Const(Keyword::If),
+                    TokenValue::Const(Keyword::Not),
+                    TokenValue::Const(Keyword::Exists),
                 ]
             ),
             Err(SyntaxError(
-                "Expected `IF NOT EXISTS`, instead found just `IF`.".to_string()
+                "Expected `NOT`, instead found end of statement.".to_string()
             ))
         )
     }
@@ -367,16 +396,16 @@ mod expect_token_sequence_tests {
     #[test]
     fn returns_error_if_eos() {
         assert_eq!(
-            expect_token_sequence(
+            expect_token_values_sequence(
                 &[],
                 &[
-                    Token::Const(ConstToken::If),
-                    Token::Const(ConstToken::Not),
-                    Token::Const(ConstToken::Exists),
+                    TokenValue::Const(Keyword::If),
+                    TokenValue::Const(Keyword::Not),
+                    TokenValue::Const(Keyword::Exists),
                 ]
             ),
             Err(SyntaxError(
-                "Expected `IF NOT EXISTS`, instead found end of statement.".to_string()
+                "Expected `IF`, instead found end of statement.".to_string()
             ))
         )
     }
@@ -389,15 +418,24 @@ mod expect_token_single_tests {
     #[test]
     fn returns_ok() {
         assert_eq!(
-            expect_token_single(
+            expect_token_value(
                 &[
-                    Token::Const(ConstToken::Primary),
-                    Token::Arbitrary("foo".to_string())
+                    Token {
+                        value: TokenValue::Const(Keyword::Primary),
+                        line_number: 1
+                    },
+                    Token {
+                        value: TokenValue::Arbitrary("foo".to_string()),
+                        line_number: 1
+                    }
                 ],
-                &Token::Const(ConstToken::Primary)
+                &TokenValue::Const(Keyword::Primary)
             ),
             Ok(ExpectOk {
-                rest: &[Token::Arbitrary("foo".to_string())][..],
+                rest: &[Token {
+                    value: TokenValue::Arbitrary("foo".to_string()),
+                    line_number: 1
+                }][..],
                 tokens_consumed_count: 1,
                 outcome: ()
             })
@@ -407,12 +445,15 @@ mod expect_token_single_tests {
     #[test]
     fn returns_error_if_const_token() {
         assert_eq!(
-            expect_token_single(
-                &[Token::Const(ConstToken::Create)],
-                &Token::Const(ConstToken::Primary)
+            expect_token_value(
+                &[Token {
+                    value: TokenValue::Const(Keyword::Create),
+                    line_number: 1
+                }],
+                &TokenValue::Const(Keyword::Primary)
             ),
             Err(SyntaxError(
-                "Expected `PRIMARY`, instead found `CREATE`.".to_string()
+                "Expected `PRIMARY`, instead found `CREATE` at line 1.".to_string()
             ))
         )
     }
@@ -420,7 +461,7 @@ mod expect_token_single_tests {
     #[test]
     fn returns_error_if_eos() {
         assert_eq!(
-            expect_token_single(&[], &Token::Const(ConstToken::Primary)),
+            expect_token_value(&[], &TokenValue::Const(Keyword::Primary)),
             Err(SyntaxError(
                 "Expected `PRIMARY`, instead found end of statement.".to_string()
             ))
@@ -435,7 +476,10 @@ mod expect_identifier_tests {
     #[test]
     fn returns_ok() {
         assert_eq!(
-            expect_identifier(&[Token::Arbitrary("foo".to_string())]),
+            expect_identifier(&[Token {
+                value: TokenValue::Arbitrary("foo".to_string()),
+                line_number: 1
+            }]),
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 1,
@@ -447,9 +491,12 @@ mod expect_identifier_tests {
     #[test]
     fn returns_error_if_const_token() {
         assert_eq!(
-            expect_identifier(&[Token::Const(ConstToken::Create)]),
+            expect_identifier(&[Token {
+                value: TokenValue::Const(Keyword::Create),
+                line_number: 1
+            }]),
             Err(SyntaxError(
-                "Expected an identifier, instead found `CREATE`.".to_string()
+                "Expected an identifier, instead found `CREATE` at line 1.".to_string()
             ))
         )
     }
@@ -468,18 +515,21 @@ mod expect_identifier_tests {
 // Semantic expect tests
 
 #[cfg(test)]
-mod expect_value_type_wrapped_tests {
+mod expect_data_type_wrapped_tests {
     use super::*;
 
     #[test]
     fn returns_ok_uint64() {
         assert_eq!(
-            expect_value_type_wrapped(&[Token::Type(ValueType::UInt64)]),
+            expect_data_type_wrapped(&[Token {
+                value: TokenValue::Type(DataType::UInt64),
+                line_number: 1
+            }]),
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 1,
-                outcome: ValueTypeWrapped {
-                    value_type: ValueType::UInt64,
+                outcome: DataTypeWrapped {
+                    data_type: DataType::UInt64,
                     is_nullable: false
                 }
             })
@@ -489,17 +539,29 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_ok_nullable_timestamp() {
         assert_eq!(
-            expect_value_type_wrapped(&[
-                Token::Const(ConstToken::Nullable),
-                Token::Delimiting(Delimiter::ParenthesisOpening),
-                Token::Type(ValueType::Timestamp),
-                Token::Delimiting(Delimiter::ParenthesisClosing)
+            expect_data_type_wrapped(&[
+                Token {
+                    value: TokenValue::Const(Keyword::Nullable),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Type(DataType::Timestamp),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                    line_number: 1
+                }
             ]),
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 4,
-                outcome: ValueTypeWrapped {
-                    value_type: ValueType::Timestamp,
+                outcome: DataTypeWrapped {
+                    data_type: DataType::Timestamp,
                     is_nullable: true
                 }
             })
@@ -509,14 +571,26 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_error_if_nullable_not_closed() {
         assert_eq!(
-            expect_value_type_wrapped(&[
-                Token::Const(ConstToken::Nullable),
-                Token::Delimiting(Delimiter::ParenthesisOpening),
-                Token::Type(ValueType::Timestamp),
-                Token::Delimiting(Delimiter::Comma)
+            expect_data_type_wrapped(&[
+                Token {
+                    value: TokenValue::Const(Keyword::Nullable),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Type(DataType::Timestamp),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::Comma),
+                    line_number: 1
+                }
             ]),
             Err(SyntaxError(
-                "Expected a closing parenthesis, instead found `,`.".to_string()
+                "Expected a closing parenthesis, instead found `,` at line 1.".to_string()
             ))
         )
     }
@@ -524,9 +598,12 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_error_if_no_type() {
         assert_eq!(
-            expect_value_type_wrapped(&[Token::Arbitrary("foo".to_string())]),
+            expect_data_type_wrapped(&[Token {
+                value: TokenValue::Arbitrary("foo".to_string()),
+                line_number: 1
+            }]),
             Err(SyntaxError(
-                "Expected a type or `NULLABLE(`, instead found `foo`.".to_string()
+                "Expected a type or `NULLABLE(`, instead found `foo` at line 1.".to_string()
             ))
         )
     }
@@ -534,7 +611,7 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_error_if_neos() {
         assert_eq!(
-            expect_value_type_wrapped(&[]),
+            expect_data_type_wrapped(&[]),
             Err(SyntaxError(
                 "Expected a type or `NULLABLE(`, instead found end of statement.".to_string()
             ))
@@ -544,13 +621,22 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_error_if_no_type_but_nullable() {
         assert_eq!(
-            expect_value_type_wrapped(&[
-                Token::Const(ConstToken::Nullable),
-                Token::Delimiting(Delimiter::ParenthesisOpening),
-                Token::Arbitrary("bar".to_string())
+            expect_data_type_wrapped(&[
+                Token {
+                    value: TokenValue::Const(Keyword::Nullable),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Arbitrary("bar".to_string()),
+                    line_number: 1
+                }
             ]),
             Err(SyntaxError(
-                "Expected a type, instead found `bar`.".to_string()
+                "Expected a type, instead found `bar` at line 1.".to_string()
             ))
         )
     }
@@ -558,9 +644,15 @@ mod expect_value_type_wrapped_tests {
     #[test]
     fn returns_error_if_eos_but_nullable() {
         assert_eq!(
-            expect_value_type_wrapped(&[
-                Token::Const(ConstToken::Nullable),
-                Token::Delimiting(Delimiter::ParenthesisOpening)
+            expect_data_type_wrapped(&[
+                Token {
+                    value: TokenValue::Const(Keyword::Nullable),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    line_number: 1
+                }
             ]),
             Err(SyntaxError(
                 "Expected a type, instead found end of statement.".to_string()
