@@ -33,12 +33,12 @@ fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
             ..
         }) => Ok(Statement::CreateTable(parse_create_table(&tokens[1..])?)),
         Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected `{}`, instead found `{}`.",
+            "Expected {}, instead found `{}`.",
             Keyword::Table,
             wrong_token
         ))),
         None => Err(SyntaxError(format!(
-            "Expected `{}`, instead found end of statement.",
+            "Expected {}, instead found end of statement.",
             Keyword::Table
         ))),
     }
@@ -52,12 +52,12 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
             ..
         }) => parse_create(&tokens[1..]),
         Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected `{}`, instead found `{}`.",
+            "Expected {}, instead found `{}`.",
             Keyword::Create,
             wrong_token
         ))),
         None => Err(SyntaxError(format!(
-            "Expected `{}`, instead found end of statement.",
+            "Expected {}, instead found end of statement.",
             Keyword::Create
         ))),
     }

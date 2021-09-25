@@ -21,7 +21,7 @@ pub fn expect_token_value<'t>(
             value: TokenValue::Delimiting(Delimiter::Semicolon),
             ..
         }) => Err(SyntaxError(format!(
-            "Expected `{}`, instead found end of statement.",
+            "Expected {}, instead found end of statement.",
             expected_token_value
         ))),
         Some(found_token) => {
@@ -33,7 +33,7 @@ pub fn expect_token_value<'t>(
                 })
             } else {
                 Err(SyntaxError(format!(
-                    "Expected `{}`, instead found {}.",
+                    "Expected {}, instead found {}.",
                     expected_token_value, found_token
                 )))
             }
@@ -330,7 +330,7 @@ mod expect_token_sequence_tests {
                 ]
             ),
             Err(SyntaxError(
-                "Expected `EXISTS`, instead found `xyz` at line 1.".to_string()
+                "Expected keyword `EXISTS`, instead found arbitrary `xyz` at line 1.".to_string()
             ))
         )
     }
@@ -350,7 +350,7 @@ mod expect_token_sequence_tests {
                 ]
             ),
             Err(SyntaxError(
-                "Expected `NOT`, instead found end of statement.".to_string()
+                "Expected keyword `NOT`, instead found end of statement.".to_string()
             ))
         )
     }
@@ -367,7 +367,7 @@ mod expect_token_sequence_tests {
                 ]
             ),
             Err(SyntaxError(
-                "Expected `IF`, instead found end of statement.".to_string()
+                "Expected keyword `IF`, instead found end of statement.".to_string()
             ))
         )
     }
@@ -415,7 +415,7 @@ mod expect_token_single_tests {
                 &TokenValue::Const(Keyword::Primary)
             ),
             Err(SyntaxError(
-                "Expected `PRIMARY`, instead found `CREATE` at line 1.".to_string()
+                "Expected keyword `PRIMARY`, instead found keyword `CREATE` at line 1.".to_string()
             ))
         )
     }
@@ -425,7 +425,7 @@ mod expect_token_single_tests {
         assert_eq!(
             expect_token_value(&[], &TokenValue::Const(Keyword::Primary)),
             Err(SyntaxError(
-                "Expected `PRIMARY`, instead found end of statement.".to_string()
+                "Expected keyword `PRIMARY`, instead found end of statement.".to_string()
             ))
         )
     }
@@ -458,7 +458,7 @@ mod expect_identifier_tests {
                 line_number: 1
             }]),
             Err(SyntaxError(
-                "Expected an identifier, instead found `CREATE` at line 1.".to_string()
+                "Expected an identifier, instead found keyword `CREATE` at line 1.".to_string()
             ))
         )
     }
@@ -552,7 +552,7 @@ mod expect_data_type_wrapped_tests {
                 }
             ]),
             Err(SyntaxError(
-                "Expected `)`, instead found `,` at line 1.".to_string()
+                "Expected delimiter `)`, instead found delimiter `,` at line 1.".to_string()
             ))
         )
     }
@@ -565,7 +565,7 @@ mod expect_data_type_wrapped_tests {
                 line_number: 1
             }]),
             Err(SyntaxError(
-                "Expected a type, instead found `foo` at line 1.".to_string()
+                "Expected a type, instead found arbitrary `foo` at line 1.".to_string()
             ))
         )
     }
@@ -598,7 +598,7 @@ mod expect_data_type_wrapped_tests {
                 }
             ]),
             Err(SyntaxError(
-                "Expected a type, instead found `bar` at line 1.".to_string()
+                "Expected a type, instead found arbitrary `bar` at line 1.".to_string()
             ))
         )
     }

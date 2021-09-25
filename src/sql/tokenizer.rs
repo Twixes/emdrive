@@ -23,7 +23,7 @@ impl fmt::Display for Delimiter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}",
+            "delimiter `{}`",
             match self {
                 Self::Comma => ",",
                 Self::Semicolon => ";",
@@ -72,7 +72,7 @@ impl fmt::Display for Keyword {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}",
+            "keyword `{}`",
             match self {
                 Keyword::Create => "CREATE",
                 Keyword::Table => "TABLE",
@@ -169,7 +169,7 @@ impl fmt::Display for TokenValue {
             Self::Delimiting(value) => fmt::Display::fmt(&value, f),
             Self::Const(value) => fmt::Display::fmt(&value, f),
             Self::Type(value) => value.fmt(f),
-            Self::Arbitrary(value) => fmt::Display::fmt(&value, f),
+            Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value),
         }
     }
 }
@@ -182,7 +182,7 @@ pub struct Token {
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "`{}` at line {}", self.value, self.line_number)
+        write!(f, "{} at line {}", self.value, self.line_number)
     }
 }
 
