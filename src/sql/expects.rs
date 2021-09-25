@@ -169,7 +169,7 @@ pub fn expect_comma_separated<'t, O>(
 #[derive(Debug, PartialEq, Eq)]
 pub struct ColumnDefinition {
     pub name: String,
-    pub data_type: DataTypeWrapped,
+    pub data_type: DataType,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -178,90 +178,52 @@ pub struct TableDefinition {
     pub columns: Vec<ColumnDefinition>,
 }
 
-pub fn expect_data_type_wrapped<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeWrapped> {
-    let mut tokens_consumed_count = 0;
-    let mut is_nullable = false;
-    let data_type: DataType;
-    let nullable_sequence = &[
-        TokenValue::Const(Keyword::Nullable),
-        TokenValue::Delimiting(Delimiter::ParenthesisOpening),
-    ];
-    match expect_token_values_sequence(tokens, nullable_sequence) {
-        Ok(ExpectOk { outcome: (), .. }) => {
-            tokens_consumed_count += nullable_sequence.len();
-            is_nullable = true;
-        }
-        _ => (),
-    };
-    match tokens[tokens_consumed_count..].first() {
+pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeRaw> {
+    match tokens.first() {
         None
         | Some(Token {
             value: TokenValue::Delimiting(Delimiter::Semicolon),
             ..
-        }) => {
-            return Err(SyntaxError(if is_nullable {
-                "Expected a type, instead found end of statement.".to_string()
-            } else {
-                "Expected a type or `NULLABLE(`, instead found end of statement.".to_string()
-            }))
-        }
+        }) => Err(SyntaxError(
+            "Expected a type, instead found end of statement.".to_string(),
+        )),
         Some(Token {
             value: TokenValue::Type(found_data_type),
             ..
-        }) => {
-            tokens_consumed_count += 1;
-            data_type = *found_data_type;
-        }
-        Some(wrong_token) => {
-            return Err(SyntaxError(if is_nullable {
-                format!("Expected a type, instead found {}.", wrong_token)
-            } else {
-                format!(
-                    "Expected a type or `NULLABLE(`, instead found {}.",
-                    wrong_token
-                )
-            }))
-        }
-    };
-    if is_nullable {
-        match tokens[tokens_consumed_count..].first() {
-            None
-            | Some(Token {
-                value: TokenValue::Delimiting(Delimiter::Semicolon),
-                ..
-            }) => {
-                return Err(SyntaxError(
-                    "Expected a closing parenthesis, instead found end of statement.".to_string(),
-                ))
-            }
-            Some(Token {
-                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
-                ..
-            }) => Ok(ExpectOk {
-                rest: &tokens[tokens_consumed_count + 1..],
-                tokens_consumed_count: tokens_consumed_count + 1,
-                outcome: DataTypeWrapped {
-                    data_type,
-                    is_nullable,
-                },
-            }),
-            Some(wrong_token) => {
-                return Err(SyntaxError(format!(
-                    "Expected a closing parenthesis, instead found {}.",
-                    wrong_token
-                )))
-            }
-        }
-    } else {
-        Ok(ExpectOk {
-            rest: &tokens[tokens_consumed_count..],
-            tokens_consumed_count,
-            outcome: DataTypeWrapped {
-                data_type,
-                is_nullable,
-            },
-        })
+        }) => Ok(ExpectOk {
+            rest: &tokens[1..],
+            tokens_consumed_count: 1,
+            outcome: *found_data_type,
+        }),
+        Some(wrong_token) => Err(SyntaxError(format!(
+            "Expected a type, instead found {}.",
+            wrong_token
+        ))),
     }
+}
+
+pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
+    let is_nullable = match expect_token_value(tokens, &TokenValue::Const(Keyword::Nullable)) {
+        Ok(ExpectOk { .. }) => true,
+        _ => false,
+    };
+    let ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: data_type,
+    } = if is_nullable {
+        expect_enclosed(&tokens[1..], expect_data_type_raw)?
+    } else {
+        expect_data_type_raw(tokens)?
+    };
+    Ok(ExpectOk {
+        rest,
+        tokens_consumed_count: usize::from(is_nullable) + tokens_consumed_count,
+        outcome: DataType {
+            raw_type: data_type,
+            is_nullable,
+        },
+    })
 }
 
 pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ColumnDefinition> {
@@ -274,7 +236,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
         rest,
         tokens_consumed_count: tokens_consumed_count_data_type,
         outcome: data_type,
-    } = expect_data_type_wrapped(rest)?;
+    } = expect_data_type(rest)?;
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_data_type,
@@ -521,15 +483,15 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_ok_uint64() {
         assert_eq!(
-            expect_data_type_wrapped(&[Token {
-                value: TokenValue::Type(DataType::UInt64),
+            expect_data_type(&[Token {
+                value: TokenValue::Type(DataTypeRaw::UInt64),
                 line_number: 1
             }]),
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 1,
-                outcome: DataTypeWrapped {
-                    data_type: DataType::UInt64,
+                outcome: DataType {
+                    raw_type: DataTypeRaw::UInt64,
                     is_nullable: false
                 }
             })
@@ -539,7 +501,7 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_ok_nullable_timestamp() {
         assert_eq!(
-            expect_data_type_wrapped(&[
+            expect_data_type(&[
                 Token {
                     value: TokenValue::Const(Keyword::Nullable),
                     line_number: 1
@@ -549,7 +511,7 @@ mod expect_data_type_wrapped_tests {
                     line_number: 1
                 },
                 Token {
-                    value: TokenValue::Type(DataType::Timestamp),
+                    value: TokenValue::Type(DataTypeRaw::Timestamp),
                     line_number: 1
                 },
                 Token {
@@ -560,8 +522,8 @@ mod expect_data_type_wrapped_tests {
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 4,
-                outcome: DataTypeWrapped {
-                    data_type: DataType::Timestamp,
+                outcome: DataType {
+                    raw_type: DataTypeRaw::Timestamp,
                     is_nullable: true
                 }
             })
@@ -571,7 +533,7 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_error_if_nullable_not_closed() {
         assert_eq!(
-            expect_data_type_wrapped(&[
+            expect_data_type(&[
                 Token {
                     value: TokenValue::Const(Keyword::Nullable),
                     line_number: 1
@@ -581,7 +543,7 @@ mod expect_data_type_wrapped_tests {
                     line_number: 1
                 },
                 Token {
-                    value: TokenValue::Type(DataType::Timestamp),
+                    value: TokenValue::Type(DataTypeRaw::Timestamp),
                     line_number: 1
                 },
                 Token {
@@ -590,7 +552,7 @@ mod expect_data_type_wrapped_tests {
                 }
             ]),
             Err(SyntaxError(
-                "Expected a closing parenthesis, instead found `,` at line 1.".to_string()
+                "Expected `)`, instead found `,` at line 1.".to_string()
             ))
         )
     }
@@ -598,12 +560,12 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_error_if_no_type() {
         assert_eq!(
-            expect_data_type_wrapped(&[Token {
+            expect_data_type(&[Token {
                 value: TokenValue::Arbitrary("foo".to_string()),
                 line_number: 1
             }]),
             Err(SyntaxError(
-                "Expected a type or `NULLABLE(`, instead found `foo` at line 1.".to_string()
+                "Expected a type, instead found `foo` at line 1.".to_string()
             ))
         )
     }
@@ -611,9 +573,9 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_error_if_neos() {
         assert_eq!(
-            expect_data_type_wrapped(&[]),
+            expect_data_type(&[]),
             Err(SyntaxError(
-                "Expected a type or `NULLABLE(`, instead found end of statement.".to_string()
+                "Expected a type, instead found end of statement.".to_string()
             ))
         )
     }
@@ -621,7 +583,7 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_error_if_no_type_but_nullable() {
         assert_eq!(
-            expect_data_type_wrapped(&[
+            expect_data_type(&[
                 Token {
                     value: TokenValue::Const(Keyword::Nullable),
                     line_number: 1
@@ -644,7 +606,7 @@ mod expect_data_type_wrapped_tests {
     #[test]
     fn returns_error_if_eos_but_nullable() {
         assert_eq!(
-            expect_data_type_wrapped(&[
+            expect_data_type(&[
                 Token {
                     value: TokenValue::Const(Keyword::Nullable),
                     line_number: 1

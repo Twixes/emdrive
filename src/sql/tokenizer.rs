@@ -108,7 +108,7 @@ impl FromStr for Keyword {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum DataType {
+pub enum DataTypeRaw {
     UInt8,
     UInt16,
     UInt32,
@@ -130,12 +130,12 @@ pub enum ValueInstance {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct DataTypeWrapped {
-    pub data_type: DataType,
+pub struct DataType {
+    pub raw_type: DataTypeRaw,
     pub is_nullable: bool,
 }
 
-impl FromStr for DataType {
+impl FromStr for DataTypeRaw {
     type Err = String;
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
@@ -159,7 +159,7 @@ impl FromStr for DataType {
 pub enum TokenValue {
     Delimiting(Delimiter),
     Const(Keyword),
-    Type(DataType),
+    Type(DataTypeRaw),
     Arbitrary(String),
 }
 
@@ -195,7 +195,7 @@ impl FromStr for TokenValue {
                 Self::Delimiting(delimiting_token)
             } else if let Ok(const_token) = Keyword::from_str(candidate) {
                 Self::Const(const_token)
-            } else if let Ok(suppoted_type) = DataType::from_str(candidate) {
+            } else if let Ok(suppoted_type) = DataTypeRaw::from_str(candidate) {
                 Self::Type(suppoted_type)
             } else {
                 Self::Arbitrary(candidate.to_string())
@@ -293,7 +293,7 @@ mod tests {
                 line_number: 2,
             },
             Token {
-                value: TokenValue::Type(DataType::UInt64),
+                value: TokenValue::Type(DataTypeRaw::UInt64),
                 line_number: 2,
             },
             Token {
@@ -310,7 +310,7 @@ mod tests {
                 line_number: 3,
             },
             Token {
-                value: TokenValue::Type(DataType::UInt128),
+                value: TokenValue::Type(DataTypeRaw::UInt128),
                 line_number: 3,
             },
             Token {
@@ -331,7 +331,7 @@ mod tests {
                 line_number: 4,
             },
             Token {
-                value: TokenValue::Type(DataType::Timestamp),
+                value: TokenValue::Type(DataTypeRaw::Timestamp),
                 line_number: 4,
             },
             // New line
@@ -397,7 +397,7 @@ mod tests {
                 line_number: 2,
             },
             Token {
-                value: TokenValue::Type(DataType::UInt64),
+                value: TokenValue::Type(DataTypeRaw::UInt64),
                 line_number: 2,
             },
             Token {

@@ -96,22 +96,22 @@ mod tests {
                     columns: vec![
                         ColumnDefinition {
                             name: "server_id".to_string(),
-                            data_type: DataTypeWrapped {
-                                data_type: DataType::UInt64,
+                            data_type: DataType {
+                                raw_type: DataTypeRaw::UInt64,
                                 is_nullable: true
                             }
                         },
                         ColumnDefinition {
                             name: "hash".to_string(),
-                            data_type: DataTypeWrapped {
-                                data_type: DataType::UInt128,
+                            data_type: DataType {
+                                raw_type: DataTypeRaw::UInt128,
                                 is_nullable: false
                             }
                         },
                         ColumnDefinition {
                             name: "sent_at".to_string(),
-                            data_type: DataTypeWrapped {
-                                data_type: DataType::Timestamp,
+                            data_type: DataType {
+                                raw_type: DataTypeRaw::Timestamp,
                                 is_nullable: false
                             }
                         },
