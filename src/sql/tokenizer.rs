@@ -1,10 +1,10 @@
 use std::str::FromStr;
 
-use crate::sql::errors::*;
-use crate::sql::expects::*;
+use super::errors::*;
+use super::expects::*;
 use std::fmt::{self, Debug};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Delimiter {
     Comma,
     Semicolon,
@@ -21,6 +21,23 @@ impl Delimiter {
     const MEANINGFUL_CHARS: &'static [char] = &[',', ';', '\'', '"', '(', ')'];
 }
 
+impl fmt::Display for Delimiter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Self::Comma => ",",
+                Self::Semicolon => ";",
+                Self::SingleQuote => "'",
+                Self::DoubleQuote => "\"",
+                Self::ParenthesisOpening => "(",
+                Self::ParenthesisClosing => ")",
+            }
+        )
+    }
+}
+
 impl FromStr for Delimiter {
     type Err = String;
 
@@ -33,14 +50,14 @@ impl FromStr for Delimiter {
             "(" => Ok(Self::ParenthesisOpening),
             ")" => Ok(Self::ParenthesisClosing),
             _ => Err(format!(
-                "\"{}\" does not refer to a meaningful delimiter",
+                "`{}` does not refer to a meaningful delimiter",
                 candidate
             )),
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ConstToken {
     Create,
     Table,
@@ -87,12 +104,12 @@ impl FromStr for ConstToken {
             "primary" => Ok(Self::Primary),
             "metric" => Ok(Self::Metric),
             "key" => Ok(Self::Key),
-            _ => Err(format!("\"{}\" does not refer to a const token", candidate)),
+            _ => Err(format!("`{}` does not refer to a const token", candidate)),
         }
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ValueType {
     UInt8,
     UInt16,
@@ -114,7 +131,7 @@ pub enum ValueInstance {
     VarChar(String),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct ValueTypeWrapped {
     pub value_type: ValueType,
     pub is_nullable: bool,
@@ -133,14 +150,14 @@ impl FromStr for ValueType {
             "timestamp" => Ok(Self::Timestamp),
             "varchar" => Ok(Self::VarChar),
             _ => Err(format!(
-                "\"{}\" does not refer to a supported type",
+                "`{}` does not refer to a supported type",
                 candidate
             )),
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Token {
     Delimiting(Delimiter),
     Const(ConstToken),
@@ -151,7 +168,7 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Delimiting(value) => value.fmt(f),
+            Token::Delimiting(value) => fmt::Display::fmt(&value, f),
             Token::Const(value) => fmt::Display::fmt(&value, f),
             Token::Type(value) => value.fmt(f),
             Token::Arbitrary(value) => fmt::Display::fmt(&value, f),

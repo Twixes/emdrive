@@ -1,38 +1,62 @@
-use crate::sql::errors::*;
-use crate::sql::tokenizer::*;
+use super::errors::*;
+use super::expects::*;
+use super::tokenizer::*;
 
-fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
-    let mut if_not_exists = false;
-    let first = &tokens[0];
-    let rest = &tokens[1..];
-    Err(SyntaxError("Not implemented!".to_string()))
+fn parse_create_table(tokens: &[Token]) -> Result<CreateTableStatement, SyntaxError> {
+    let (if_not_exists, rest) = match expect_token_sequence(
+        tokens,
+        &[
+            Token::Const(ConstToken::If),
+            Token::Const(ConstToken::Not),
+            Token::Const(ConstToken::Exists),
+        ],
+    ) {
+        Ok(ExpectOk { rest, .. }) => (true, rest),
+        Err(_) => (false, tokens),
+    };
+    let ExpectOk {
+        outcome: table,
+        rest,
+        ..
+    } = expect_table_definition(rest)?;
+    expect_end_of_statement(rest)?;
+    Ok(CreateTableStatement {
+        table,
+        if_not_exists,
+    })
 }
 
-pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
-    let tokens = tokenize_statement(input);
-    let mut current_expected_possibilities: Vec<Token> = vec![Token::Const(ConstToken::Create)];
-    let first = &tokens[0];
-    let rest = &tokens[1..];
-    match first {
-        Token::Const(ConstToken::Create) => parse_create(rest),
-        _ => Err(SyntaxError(format!(
-            "Expected one of: {}, got {}",
-            ConstToken::Create,
-            first
+fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
+    match tokens.first() {
+        Some(Token::Const(ConstToken::Table)) => {
+            Ok(Statement::CreateTable(parse_create_table(&tokens[1..])?))
+        }
+        Some(wrong_token) => Err(SyntaxError(format!(
+            "Expected `{}`, instead found `{}`.",
+            ConstToken::Table,
+            wrong_token
+        ))),
+        None => Err(SyntaxError(format!(
+            "Expected `{}`, instead found end of statement.",
+            ConstToken::Table
         ))),
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-struct ColumnDefinition {
-    name: String,
-    value_type: ValueTypeWrapped,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct TableDefinition {
-    name: String,
-    columns: Vec<ColumnDefinition>,
+pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
+    let tokens = tokenize_statement(input);
+    match tokens.first() {
+        Some(Token::Const(ConstToken::Create)) => parse_create(&tokens[1..]),
+        Some(wrong_token) => Err(SyntaxError(format!(
+            "Expected `{}`, instead found `{}`.",
+            ConstToken::Create,
+            wrong_token
+        ))),
+        None => Err(SyntaxError(format!(
+            "Expected `{}`, instead found end of statement.",
+            ConstToken::Create
+        ))),
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -50,11 +74,11 @@ pub enum Statement {
 mod tests {
     use super::*;
 
-    // #[test]
+    #[test]
     fn parsing_works_with_create_table() {
         let statement = "CREATE TABLE IF NOT EXISTS test (
             server_id nullable(UINT64),
-            hash UINT128 METRIC KEY,
+            hash UINT128,
             sent_at TIMESTAMP
         );";
 

@@ -50,7 +50,7 @@ impl<'a> Index<'a> {
         let entry_size = mem::size_of::<u128>();
         let raw_data_size = raw_data.len();
         if raw_data_size % entry_size != 0 {
-            panic!("Size of index data for collection \"{}\" must be a multiple of {} bytes, instead found {} bytes!", &self.collection_name, entry_size, raw_data_size);
+            panic!("Size of index data for collection `{}` must be a multiple of {} bytes, instead found {} bytes!", &self.collection_name, entry_size, raw_data_size);
         }
         raw_data
             .chunks(entry_size)
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Size of index data for collection \"test\" must be a multiple of 16 bytes, instead found 17 bytes!"
+        expected = "Size of index data for collection `test` must be a multiple of 16 bytes, instead found 17 bytes!"
     )]
     fn raw_data_parsing_panics_when_data_is_wrong_size() {
         let dummy_index = Index {
