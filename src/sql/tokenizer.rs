@@ -23,13 +23,13 @@ impl fmt::Display for Delimiter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "delimiter `{}`",
+            "{}",
             match self {
-                Self::Comma => ",",
-                Self::SingleQuote => "'",
-                Self::DoubleQuote => "\"",
-                Self::ParenthesisOpening => "(",
-                Self::ParenthesisClosing => ")",
+                Self::Comma => "a comma `,`",
+                Self::SingleQuote => "a single quote `'`",
+                Self::DoubleQuote => "a double quote `\"`",
+                Self::ParenthesisOpening => "an opening parenthesis `(`",
+                Self::ParenthesisClosing => "a closing parenthesis `)`",
             }
         )
     }
@@ -158,7 +158,7 @@ pub enum TokenValue {
     Delimiting(Delimiter),
     Const(Keyword),
     Type(DataTypeRaw),
-    Arbitrary(String)
+    Arbitrary(String),
 }
 
 impl fmt::Display for TokenValue {
@@ -167,7 +167,7 @@ impl fmt::Display for TokenValue {
             Self::Delimiting(value) => fmt::Display::fmt(&value, f),
             Self::Const(value) => fmt::Display::fmt(&value, f),
             Self::Type(value) => value.fmt(f),
-            Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value)
+            Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value),
         }
     }
 }
@@ -177,7 +177,7 @@ impl FromStr for TokenValue {
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         Ok(
-           if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
+            if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
                 Self::Delimiting(delimiting_token)
             } else if let Ok(const_token) = Keyword::from_str(candidate) {
                 Self::Const(const_token)
@@ -204,7 +204,7 @@ impl fmt::Display for Token {
 
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
-    'tokenization: for (line_index, line) in input.split("\n").enumerate() {
+    for (line_index, line) in input.split("\n").enumerate() {
         let raw_tokens = line
             .split_whitespace()
             .filter(|element| !element.is_empty());
@@ -216,7 +216,7 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
                 // End tokenization when a statement separator (semicolon) is encountered
                 if character == Delimiter::STATEMENT_SEPARATOR {
                     was_eos_encountered = true;
-                    break
+                    break;
                 }
                 // Recognize delimiters early, as they don't have to be separated by whitespace from other tokens
                 if Delimiter::MEANINGFUL_CHARS.contains(&character) {
@@ -232,18 +232,14 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
             if !current_element.is_empty() {
                 interpreted_tokens.push(current_element);
             }
-            if (was_eos_encountered) {
-                break
+            if was_eos_encountered {
+                break;
             }
         }
-        tokens.extend(
-            interpreted_tokens
-                .iter()
-                .map(|candidate| Token {
-                    value: TokenValue::from_str(&candidate).unwrap(),
-                    line_number: line_index + 1,
-                })
-        )
+        tokens.extend(interpreted_tokens.iter().map(|candidate| Token {
+            value: TokenValue::from_str(&candidate).unwrap(),
+            line_number: line_index + 1,
+        }))
     }
     tokens
 }
@@ -251,6 +247,7 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn tokenization_works_with_create_table() {
@@ -350,7 +347,7 @@ mod tests {
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 5,
-            }
+            },
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }
@@ -415,7 +412,7 @@ mod tests {
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 3,
-            }
+            },
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }

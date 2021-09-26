@@ -64,16 +64,16 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct CreateTableStatement {
+pub struct CreateTableStatement {
     table: TableDefinition,
     if_not_exists: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct InsertStatement {
+pub struct InsertStatement {
     table_name: String,
     column_names: Vec<String>,
-    values: Vec<DataInstance>
+    values: Vec<DataInstance>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -85,6 +85,7 @@ pub enum Statement {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn parsing_works_with_create_table() {

@@ -102,6 +102,7 @@ impl<'a> Index<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn raw_data_parsing_works() {

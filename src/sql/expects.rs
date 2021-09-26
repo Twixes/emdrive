@@ -15,7 +15,10 @@ pub fn expect_token_value<'t>(
     tokens: &'t [Token],
     expected_token_value: &TokenValue,
 ) -> ExpectResult<'t, ()> {
-    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, expected_token_value)?;
+    let ExpectOk {
+        outcome: found_token,
+        ..
+    } = expect_next_token(tokens, expected_token_value)?;
     if &found_token.value == expected_token_value {
         Ok(ExpectOk {
             rest: &tokens[1..],
@@ -46,7 +49,10 @@ pub fn expect_token_values_sequence<'t>(
 }
 
 pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
-    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, &"an identifier")?;
+    let ExpectOk {
+        outcome: found_token,
+        ..
+    } = expect_next_token(tokens, &"an identifier")?;
     match found_token {
         Token {
             value: TokenValue::Arbitrary(value),
@@ -77,16 +83,20 @@ pub fn expect_end_of_statement<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ()> 
     }
 }
 
-pub fn expect_next_token<'t>(tokens: &'t [Token], expectation_description: &dyn std::fmt::Display) -> ExpectResult<'t, &'t Token> {
+pub fn expect_next_token<'t>(
+    tokens: &'t [Token],
+    expectation_description: &dyn std::fmt::Display,
+) -> ExpectResult<'t, &'t Token> {
     match tokens.first() {
         Some(found_token) => Ok(ExpectOk {
             rest: &tokens[1..],
             tokens_consumed_count: 1,
             outcome: found_token,
         }),
-        None => Err(SyntaxError(
-            format!("Expected {}, instead found end of statement.", expectation_description),
-        )),
+        None => Err(SyntaxError(format!(
+            "Expected {}, instead found end of statement.",
+            expectation_description
+        ))),
     }
 }
 
@@ -161,7 +171,10 @@ pub struct TableDefinition {
 }
 
 pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeRaw> {
-    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, &"a data type")?;
+    let ExpectOk {
+        outcome: found_token,
+        ..
+    } = expect_next_token(tokens, &"a data type")?;
     match found_token {
         Token {
             value: TokenValue::Type(found_data_type),
@@ -248,6 +261,7 @@ pub fn expect_table_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Tabl
 #[cfg(test)]
 mod expect_token_sequence_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn returns_ok() {
@@ -352,6 +366,7 @@ mod expect_token_sequence_tests {
 #[cfg(test)]
 mod expect_token_single_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn returns_ok() {
@@ -410,6 +425,7 @@ mod expect_token_single_tests {
 #[cfg(test)]
 mod expect_identifier_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn returns_ok() {
@@ -455,6 +471,7 @@ mod expect_identifier_tests {
 #[cfg(test)]
 mod expect_data_type_wrapped_tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn returns_ok_uint64() {
@@ -528,7 +545,8 @@ mod expect_data_type_wrapped_tests {
                 }
             ]),
             Err(SyntaxError(
-                "Expected delimiter `)`, instead found delimiter `,` at line 1.".to_string()
+                "Expected a closing parenthesis `)`, instead found a comma `,` at line 1."
+                    .to_string()
             ))
         )
     }

@@ -31,6 +31,7 @@ pub fn distance(x: &Position, y: &Position) -> Distance {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn hamming_weight_is_calculated_correctly() {
