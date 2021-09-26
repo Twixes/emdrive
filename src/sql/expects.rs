@@ -15,29 +15,18 @@ pub fn expect_token_value<'t>(
     tokens: &'t [Token],
     expected_token_value: &TokenValue,
 ) -> ExpectResult<'t, ()> {
-    match tokens.first() {
-        None
-        | Some(Token {
-            value: TokenValue::Delimiting(Delimiter::Semicolon),
-            ..
-        }) => Err(SyntaxError(format!(
-            "Expected {}, instead found end of statement.",
-            expected_token_value
-        ))),
-        Some(found_token) => {
-            if &found_token.value == expected_token_value {
-                Ok(ExpectOk {
-                    rest: &tokens[1..],
-                    tokens_consumed_count: 1,
-                    outcome: (),
-                })
-            } else {
-                Err(SyntaxError(format!(
-                    "Expected {}, instead found {}.",
-                    expected_token_value, found_token
-                )))
-            }
-        }
+    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, expected_token_value)?;
+    if &found_token.value == expected_token_value {
+        Ok(ExpectOk {
+            rest: &tokens[1..],
+            tokens_consumed_count: 1,
+            outcome: (),
+        })
+    } else {
+        Err(SyntaxError(format!(
+            "Expected {}, instead found {}.",
+            expected_token_value, found_token
+        )))
     }
 }
 
@@ -57,39 +46,20 @@ pub fn expect_token_values_sequence<'t>(
 }
 
 pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
-    match tokens.first() {
-        None
-        | Some(Token {
-            value: TokenValue::Delimiting(Delimiter::Semicolon),
-            ..
-        }) => Err(SyntaxError(
-            "Expected an identifier, instead found end of statement.".to_string(),
-        )),
-        Some(Token {
+    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, &"an identifier")?;
+    match found_token {
+        Token {
             value: TokenValue::Arbitrary(value),
             ..
-        }) => Ok(ExpectOk {
+        } => Ok(ExpectOk {
             rest: &tokens[1..],
             tokens_consumed_count: 1,
             outcome: value.to_owned(),
         }),
-        Some(wrong_token) => Err(SyntaxError(format!(
+        wrong_token => Err(SyntaxError(format!(
             "Expected an identifier, instead found {}.",
             wrong_token
         ))),
-    }
-}
-
-pub fn expect_next_token<'t>(tokens: &'t [Token]) -> ExpectResult<'t, &'t Token> {
-    match tokens.first() {
-        Some(found_token) => Ok(ExpectOk {
-            rest: &tokens[1..],
-            tokens_consumed_count: 1,
-            outcome: found_token,
-        }),
-        None => Err(SyntaxError(
-            "Expected a token, instead found end of statement.".to_string(),
-        )),
     }
 }
 
@@ -100,24 +70,23 @@ pub fn expect_end_of_statement<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ()> 
             tokens_consumed_count: 0,
             outcome: (),
         }),
-        Some(Token {
-            value: TokenValue::Delimiting(Delimiter::Semicolon),
-            ..
-        }) => {
-            if tokens.len() > 1 {
-                Err(SyntaxError("Found tokens after a semicolon! Only a single statement at once can be provided.".to_string()))
-            } else {
-                Ok(ExpectOk {
-                    rest: &tokens[1..],
-                    tokens_consumed_count: 1,
-                    outcome: (),
-                })
-            }
-        }
         Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected no more tokens or a semicolon, instead found {}.",
+            "Expected end of statement, instead found {}.",
             wrong_token
         ))),
+    }
+}
+
+pub fn expect_next_token<'t>(tokens: &'t [Token], expectation_description: &dyn std::fmt::Display) -> ExpectResult<'t, &'t Token> {
+    match tokens.first() {
+        Some(found_token) => Ok(ExpectOk {
+            rest: &tokens[1..],
+            tokens_consumed_count: 1,
+            outcome: found_token,
+        }),
+        None => Err(SyntaxError(
+            format!("Expected {}, instead found end of statement.", expectation_description),
+        )),
     }
 }
 
@@ -192,23 +161,17 @@ pub struct TableDefinition {
 }
 
 pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeRaw> {
-    match tokens.first() {
-        None
-        | Some(Token {
-            value: TokenValue::Delimiting(Delimiter::Semicolon),
-            ..
-        }) => Err(SyntaxError(
-            "Expected a type, instead found end of statement.".to_string(),
-        )),
-        Some(Token {
+    let ExpectOk { outcome: found_token, .. } = expect_next_token(tokens, &"a data type")?;
+    match found_token {
+        Token {
             value: TokenValue::Type(found_data_type),
             ..
-        }) => Ok(ExpectOk {
+        } => Ok(ExpectOk {
             rest: &tokens[1..],
             tokens_consumed_count: 1,
             outcome: *found_data_type,
         }),
-        Some(wrong_token) => Err(SyntaxError(format!(
+        wrong_token => Err(SyntaxError(format!(
             "Expected a type, instead found {}.",
             wrong_token
         ))),
@@ -217,7 +180,7 @@ pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTyp
 
 pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
     let is_nullable = match expect_token_value(tokens, &TokenValue::Const(Keyword::Nullable)) {
-        Ok(ExpectOk { .. }) => true,
+        Ok(..) => true,
         _ => false,
     };
     let ExpectOk {
@@ -588,7 +551,7 @@ mod expect_data_type_wrapped_tests {
         assert_eq!(
             expect_data_type(&[]),
             Err(SyntaxError(
-                "Expected a type, instead found end of statement.".to_string()
+                "Expected a data type, instead found end of statement.".to_string()
             ))
         )
     }
@@ -630,7 +593,7 @@ mod expect_data_type_wrapped_tests {
                 }
             ]),
             Err(SyntaxError(
-                "Expected a type, instead found end of statement.".to_string()
+                "Expected a data type, instead found end of statement.".to_string()
             ))
         )
     }

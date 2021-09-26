@@ -12,7 +12,7 @@ Database management system for fast similarity search within metric spaces, writ
 | `UINT64` | unsigned 64-bit integer | 8 bytes | ≥ 0 and < 2⁶⁴ |
 | `UINT128` | unsigned 128-bit integer | 16 bytes | ≥ 0 and < 2¹²⁸ |
 | `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
-| `VARCHAR(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
+| `STRING(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
 
 ### Indexes
 
@@ -39,7 +39,7 @@ We'll be using database `gaggle`. A relevant table schema here may be:
 ```SQL
 CREATE TABLE photos_seen (
     hash UINT8 METRIC KEY USING mtree(hamming),
-    url VARCHAR(2048) PRIMARY KEY,
+    url STRING(2048) PRIMARY KEY,
     width UINT32,
     height UINT32,
     seen_at TIMESTAMP
@@ -105,7 +105,7 @@ This is to reduce the number of reads and writes across disk blocks, whose size 
 #### Nullability
 
 Metrobaza types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
-the table. For instance a nullable string of maximum length 20 is `NULLABLE(VARCHAR(20))`.
+the table. For instance a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
 Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, otherwise it's 1.
 
 ### Launch configuration

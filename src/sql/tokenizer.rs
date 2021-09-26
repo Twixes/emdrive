@@ -7,7 +7,6 @@ use std::fmt::{self, Debug};
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Delimiter {
     Comma,
-    Semicolon,
     SingleQuote,
     DoubleQuote,
     ParenthesisOpening,
@@ -16,7 +15,8 @@ pub enum Delimiter {
 
 impl Delimiter {
     /// Delimiting characters that affect statement meaning. Each one is a Delimiter variant.
-    const MEANINGFUL_CHARS: &'static [char] = &[',', ';', '\'', '"', '(', ')'];
+    const MEANINGFUL_CHARS: &'static [char] = &[',', '\'', '"', '(', ')'];
+    const STATEMENT_SEPARATOR: char = ';';
 }
 
 impl fmt::Display for Delimiter {
@@ -26,7 +26,6 @@ impl fmt::Display for Delimiter {
             "delimiter `{}`",
             match self {
                 Self::Comma => ",",
-                Self::Semicolon => ";",
                 Self::SingleQuote => "'",
                 Self::DoubleQuote => "\"",
                 Self::ParenthesisOpening => "(",
@@ -42,7 +41,6 @@ impl FromStr for Delimiter {
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         match candidate {
             "," => Ok(Self::Comma),
-            ";" => Ok(Self::Semicolon),
             "'" => Ok(Self::SingleQuote),
             "\"" => Ok(Self::DoubleQuote),
             "(" => Ok(Self::ParenthesisOpening),
@@ -115,18 +113,18 @@ pub enum DataTypeRaw {
     UInt64,
     UInt128,
     Timestamp,
-    VarChar,
+    String,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ValueInstance {
+pub enum DataInstance {
     UInt8(u8),
     UInt16(u16),
     UInt32(u32),
     UInt64(u64),
     UInt128(u128),
     Timestamp(u64),
-    VarChar(String),
+    String(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -146,7 +144,7 @@ impl FromStr for DataTypeRaw {
             "uint64" => Ok(Self::UInt64),
             "uint128" => Ok(Self::UInt128),
             "timestamp" => Ok(Self::Timestamp),
-            "varchar" => Ok(Self::VarChar),
+            "string" => Ok(Self::String),
             _ => Err(format!(
                 "`{}` does not refer to a supported type",
                 candidate
@@ -160,7 +158,7 @@ pub enum TokenValue {
     Delimiting(Delimiter),
     Const(Keyword),
     Type(DataTypeRaw),
-    Arbitrary(String),
+    Arbitrary(String)
 }
 
 impl fmt::Display for TokenValue {
@@ -169,8 +167,26 @@ impl fmt::Display for TokenValue {
             Self::Delimiting(value) => fmt::Display::fmt(&value, f),
             Self::Const(value) => fmt::Display::fmt(&value, f),
             Self::Type(value) => value.fmt(f),
-            Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value),
+            Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value)
         }
+    }
+}
+
+impl FromStr for TokenValue {
+    type Err = ();
+
+    fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
+        Ok(
+           if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
+                Self::Delimiting(delimiting_token)
+            } else if let Ok(const_token) = Keyword::from_str(candidate) {
+                Self::Const(const_token)
+            } else if let Ok(suppoted_type) = DataTypeRaw::from_str(candidate) {
+                Self::Type(suppoted_type)
+            } else {
+                Self::Arbitrary(candidate.to_string())
+            },
+        )
     }
 }
 
@@ -186,34 +202,23 @@ impl fmt::Display for Token {
     }
 }
 
-impl FromStr for TokenValue {
-    type Err = ();
-
-    fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
-        Ok(
-            if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
-                Self::Delimiting(delimiting_token)
-            } else if let Ok(const_token) = Keyword::from_str(candidate) {
-                Self::Const(const_token)
-            } else if let Ok(suppoted_type) = DataTypeRaw::from_str(candidate) {
-                Self::Type(suppoted_type)
-            } else {
-                Self::Arbitrary(candidate.to_string())
-            },
-        )
-    }
-}
-
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
-    for (lineIndex, line) in input.split("\n").enumerate() {
+    'tokenization: for (line_index, line) in input.split("\n").enumerate() {
         let raw_tokens = line
             .split_whitespace()
             .filter(|element| !element.is_empty());
         let mut interpreted_tokens = Vec::<String>::new();
+        let mut was_eos_encountered = false;
         for token in raw_tokens {
             let mut current_element: String = "".to_string();
             for character in token.chars() {
+                // End tokenization when a statement separator (semicolon) is encountered
+                if character == Delimiter::STATEMENT_SEPARATOR {
+                    was_eos_encountered = true;
+                    break
+                }
+                // Recognize delimiters early, as they don't have to be separated by whitespace from other tokens
                 if Delimiter::MEANINGFUL_CHARS.contains(&character) {
                     if !current_element.is_empty() {
                         interpreted_tokens.push(current_element.clone());
@@ -227,17 +232,17 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
             if !current_element.is_empty() {
                 interpreted_tokens.push(current_element);
             }
+            if (was_eos_encountered) {
+                break
+            }
         }
         tokens.extend(
             interpreted_tokens
                 .iter()
                 .map(|candidate| Token {
                     value: TokenValue::from_str(&candidate).unwrap(),
-                    line_number: lineIndex + 1,
+                    line_number: line_index + 1,
                 })
-                .take_while(|token_value| {
-                    token_value.value != TokenValue::Delimiting(Delimiter::Semicolon)
-                }),
         )
     }
     tokens
@@ -345,7 +350,7 @@ mod tests {
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 5,
-            },
+            }
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }
@@ -410,7 +415,7 @@ mod tests {
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 3,
-            },
+            }
         ];
         assert_eq!(&detected_tokens, &expected_tokens)
     }
