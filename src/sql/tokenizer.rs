@@ -205,14 +205,14 @@ impl fmt::Display for Token {
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
     for (line_index, line) in input.split("\n").enumerate() {
-        let raw_tokens = line
+        let transparent_split_results = line
             .split_whitespace()
             .filter(|element| !element.is_empty());
-        let mut interpreted_tokens = Vec::<String>::new();
+        let mut meaningful_split_results = Vec::<String>::new();
         let mut was_eos_encountered = false;
-        for token in raw_tokens {
+        for pre_token in transparent_split_results {
             let mut current_element: String = "".to_string();
-            for character in token.chars() {
+            for character in pre_token.chars() {
                 // End tokenization when a statement separator (semicolon) is encountered
                 if character == Delimiter::STATEMENT_SEPARATOR {
                     was_eos_encountered = true;
@@ -221,22 +221,22 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
                 // Recognize delimiters early, as they don't have to be separated by whitespace from other tokens
                 if Delimiter::MEANINGFUL_CHARS.contains(&character) {
                     if !current_element.is_empty() {
-                        interpreted_tokens.push(current_element.clone());
+                        meaningful_split_results.push(current_element.clone());
                     }
-                    interpreted_tokens.push(character.to_string());
+                    meaningful_split_results.push(character.to_string());
                     current_element.clear();
                 } else {
                     current_element.push(character);
                 }
             }
             if !current_element.is_empty() {
-                interpreted_tokens.push(current_element);
+                meaningful_split_results.push(current_element);
             }
             if was_eos_encountered {
                 break;
             }
         }
-        tokens.extend(interpreted_tokens.iter().map(|candidate| Token {
+        tokens.extend(meaningful_split_results.iter().map(|candidate| Token {
             value: TokenValue::from_str(&candidate).unwrap(),
             line_number: line_index + 1,
         }))
