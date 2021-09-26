@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use super::errors::*;
-use super::expects::*;
 use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -25,11 +24,11 @@ impl fmt::Display for Delimiter {
             f,
             "{}",
             match self {
-                Self::Comma => "a comma `,`",
-                Self::SingleQuote => "a single quote `'`",
-                Self::DoubleQuote => "a double quote `\"`",
-                Self::ParenthesisOpening => "an opening parenthesis `(`",
-                Self::ParenthesisClosing => "a closing parenthesis `)`",
+                Self::Comma => "comma `,`",
+                Self::SingleQuote => "single quote `'`",
+                Self::DoubleQuote => "double quote `\"`",
+                Self::ParenthesisOpening => "opening parenthesis `(`",
+                Self::ParenthesisClosing => "closing parenthesis `)`",
             }
         )
     }
@@ -56,6 +55,9 @@ impl FromStr for Delimiter {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Keyword {
     Create,
+    Insert,
+    Into,
+    Values,
     Table,
     If,
     Not,
@@ -73,6 +75,9 @@ impl fmt::Display for Keyword {
             "keyword `{}`",
             match self {
                 Keyword::Create => "CREATE",
+                Keyword::Insert => "INSERT",
+                Keyword::Into => "INTO",
+                Keyword::Values => "VALUES",
                 Keyword::Table => "TABLE",
                 Keyword::If => "IF",
                 Keyword::Not => "NOT",
@@ -92,6 +97,9 @@ impl FromStr for Keyword {
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         match candidate.to_lowercase().as_str() {
             "create" => Ok(Self::Create),
+            "insert" => Ok(Self::Insert),
+            "into" => Ok(Self::Into),
+            "values" => Ok(Self::Values),
             "table" => Ok(Self::Table),
             "if" => Ok(Self::If),
             "not" => Ok(Self::Not),

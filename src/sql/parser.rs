@@ -2,78 +2,61 @@ use super::errors::*;
 use super::expects::*;
 use super::tokenizer::*;
 
-fn parse_create_table(tokens: &[Token]) -> Result<CreateTableStatement, SyntaxError> {
-    let (if_not_exists, rest) = match expect_token_values_sequence(
-        tokens,
-        &[
-            TokenValue::Const(Keyword::If),
-            TokenValue::Const(Keyword::Not),
-            TokenValue::Const(Keyword::Exists),
-        ],
-    ) {
-        Ok(ExpectOk { rest, .. }) => (true, rest),
-        Err(_) => (false, tokens),
-    };
-    let ExpectOk {
-        outcome: table,
-        rest,
-        ..
-    } = expect_table_definition(rest)?;
+pub fn consume_all<'t, O>(
+    tokens: &'t [Token],
+    expect_something: fn(&'t [Token]) -> ExpectResult<'t, O>,
+) -> Result<O, SyntaxError> {
+    let ExpectOk { rest, outcome, .. } = expect_something(tokens)?;
     expect_end_of_statement(rest)?;
-    Ok(CreateTableStatement {
-        table,
-        if_not_exists,
-    })
-}
-
-fn parse_create(tokens: &[Token]) -> Result<Statement, SyntaxError> {
-    match tokens.first() {
-        Some(Token {
-            value: TokenValue::Const(Keyword::Table),
-            ..
-        }) => Ok(Statement::CreateTable(parse_create_table(&tokens[1..])?)),
-        Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected {}, instead found `{}`.",
-            Keyword::Table,
-            wrong_token
-        ))),
-        None => Err(SyntaxError(format!(
-            "Expected {}, instead found end of statement.",
-            Keyword::Table
-        ))),
-    }
+    Ok(outcome)
 }
 
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
     let tokens = tokenize_statement(input);
-    match tokens.first() {
-        Some(Token {
+    let ExpectOk {
+        rest,
+        outcome: found_token_first,
+        ..
+    } = expect_next_token(
+        &tokens,
+        &format!("{} or {}", Keyword::Create, Keyword::Insert),
+    )?;
+    match found_token_first {
+        Token {
             value: TokenValue::Const(Keyword::Create),
             ..
-        }) => parse_create(&tokens[1..]),
-        Some(wrong_token) => Err(SyntaxError(format!(
-            "Expected {}, instead found `{}`.",
+        } => {
+            let ExpectOk {
+                rest,
+                outcome: found_token_second,
+                ..
+            } = expect_next_token(rest, &format!("{} or {}", Keyword::Create, Keyword::Insert))?;
+            match found_token_second {
+                Token {
+                    value: TokenValue::Const(Keyword::Table),
+                    ..
+                } => Ok(Statement::CreateTable(consume_all(
+                    rest,
+                    expect_create_table,
+                )?)),
+                wrong_token => Err(SyntaxError(format!(
+                    "Expected {}, instead found {}.",
+                    Keyword::Table,
+                    wrong_token
+                ))),
+            }
+        }
+        Token {
+            value: TokenValue::Const(Keyword::Insert),
+            ..
+        } => Ok(Statement::Insert(consume_all(rest, expect_insert)?)),
+        wrong_token => Err(SyntaxError(format!(
+            "Expected {} or {}, instead found {}.",
             Keyword::Create,
+            Keyword::Insert,
             wrong_token
         ))),
-        None => Err(SyntaxError(format!(
-            "Expected {}, instead found end of statement.",
-            Keyword::Create
-        ))),
     }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct CreateTableStatement {
-    table: TableDefinition,
-    if_not_exists: bool,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct InsertStatement {
-    table_name: String,
-    column_names: Vec<String>,
-    values: Vec<DataInstance>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

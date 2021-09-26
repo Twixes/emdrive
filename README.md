@@ -55,7 +55,7 @@ Oh, your bot has just seen a new image! Let's register it:
 
 ```SQL
 INSERT INTO photos_seen (hash, url, width, height, seen_at)
-VALUES (0b11001111, 'https://twixes.com/a.png', 1280, 820, NOW());
+VALUES (0b11001111, 'https://twixes.com/a.png', 1280, 820, '2077-01-01T21:37');
 ```
 
 Now, look, a user just uploaded their image to see similar occurences of it from the internet. The search engine
