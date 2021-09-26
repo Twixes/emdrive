@@ -70,8 +70,16 @@ struct CreateTableStatement {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+struct InsertStatement {
+    table_name: String,
+    column_names: Vec<String>,
+    values: Vec<DataInstance>
+}
+
+#[derive(Debug, PartialEq, Eq)]
 pub enum Statement {
     CreateTable(CreateTableStatement),
+    Insert(InsertStatement),
 }
 
 #[cfg(test)]
