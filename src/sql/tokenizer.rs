@@ -212,7 +212,7 @@ impl fmt::Display for Token {
 
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
-    for (line_index, line) in input.split("\n").enumerate() {
+    for (line_index, line) in input.lines().enumerate() {
         let transparent_split_results = line
             .split_whitespace()
             .filter(|element| !element.is_empty());

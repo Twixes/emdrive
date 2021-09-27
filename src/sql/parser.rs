@@ -2,15 +2,6 @@ use super::errors::*;
 use super::expects::*;
 use super::tokenizer::*;
 
-pub fn consume_all<'t, O>(
-    tokens: &'t [Token],
-    expect_something: fn(&'t [Token]) -> ExpectResult<'t, O>,
-) -> Result<O, SyntaxError> {
-    let ExpectOk { rest, outcome, .. } = expect_something(tokens)?;
-    expect_end_of_statement(rest)?;
-    Ok(outcome)
-}
-
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
     let tokens = tokenize_statement(input);
     let ExpectOk {
@@ -110,6 +101,42 @@ mod tests {
                     ]
                 },
                 if_not_exists: true
+            })
+        )
+    }
+
+    #[test]
+    fn parsing_works_with_insert() {
+        let statement = "INSERT INTO xyz (foo, bar)
+        VALUES (0b11001111, 'https://twixes.com/a.png');";
+
+        let detected_statement = parse_statement(&statement).unwrap();
+
+        assert_eq!(
+            detected_statement,
+            Statement::Insert(InsertStatement {
+                table_name: "xyz".to_string(),
+                column_names: vec!["foo".to_string(), "bar".to_string(),],
+                values: vec![
+                    vec![Token {
+                        value: TokenValue::Arbitrary("0b11001111".to_string()),
+                        line_number: 2
+                    }],
+                    vec![
+                        Token {
+                            value: TokenValue::Delimiting(Delimiter::SingleQuote),
+                            line_number: 2
+                        },
+                        Token {
+                            value: TokenValue::Arbitrary("https://twixes.com/a.png".to_string()),
+                            line_number: 2
+                        },
+                        Token {
+                            value: TokenValue::Delimiting(Delimiter::SingleQuote),
+                            line_number: 2
+                        }
+                    ]
+                ]
             })
         )
     }

@@ -48,17 +48,7 @@ pub fn expect_table_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Tabl
         rest,
         tokens_consumed_count: tokens_consumed_count_columns,
         outcome: columns,
-    } = expect_enclosed(
-        rest,
-        |tokens_enclosed| {
-            Ok(expect_comma_separated(
-                tokens_enclosed,
-                expect_column_definition,
-            )?)
-        },
-        Delimiter::ParenthesisOpening,
-        Delimiter::ParenthesisClosing,
-    )?;
+    } = expect_enclosed_comma_separated(rest, expect_column_definition)?;
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_columns,
