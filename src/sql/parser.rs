@@ -13,6 +13,7 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
         &format!("{} or {}", Keyword::Create, Keyword::Insert),
     )?;
     match found_token_first {
+        // CREATE
         Token {
             value: TokenValue::Const(Keyword::Create),
             ..
@@ -23,6 +24,7 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
                 ..
             } = expect_next_token(rest, &format!("{} or {}", Keyword::Create, Keyword::Insert))?;
             match found_token_second {
+                // CREATE TABLE
                 Token {
                     value: TokenValue::Const(Keyword::Table),
                     ..
@@ -30,6 +32,7 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
                     rest,
                     expect_create_table,
                 )?)),
+                // CREATE ???
                 wrong_token => Err(SyntaxError(format!(
                     "Expected {}, instead found {}.",
                     Keyword::Table,
@@ -37,10 +40,12 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
                 ))),
             }
         }
+        // INSERT
         Token {
             value: TokenValue::Const(Keyword::Insert),
             ..
         } => Ok(Statement::Insert(consume_all(rest, expect_insert)?)),
+        // ???
         wrong_token => Err(SyntaxError(format!(
             "Expected {} or {}, instead found {}.",
             Keyword::Create,
@@ -64,6 +69,7 @@ mod tests {
     #[test]
     fn parsing_works_with_create_table() {
         let statement = "CREATE TABLE IF NOT EXISTS test (
+            id STRING PRIMARY KEY,
             server_id nullable(UINT64),
             hash UINT128,
             sent_at TIMESTAMP
@@ -78,25 +84,36 @@ mod tests {
                     name: "test".to_string(),
                     columns: vec![
                         ColumnDefinition {
+                            name: "id".to_string(),
+                            data_type: DataType {
+                                raw_type: DataTypeRaw::String,
+                                is_nullable: false
+                            },
+                            primary_key: true,
+                        },
+                        ColumnDefinition {
                             name: "server_id".to_string(),
                             data_type: DataType {
                                 raw_type: DataTypeRaw::UInt64,
                                 is_nullable: true
-                            }
+                            },
+                            primary_key: false,
                         },
                         ColumnDefinition {
                             name: "hash".to_string(),
                             data_type: DataType {
                                 raw_type: DataTypeRaw::UInt128,
                                 is_nullable: false
-                            }
+                            },
+                            primary_key: false,
                         },
                         ColumnDefinition {
                             name: "sent_at".to_string(),
                             data_type: DataType {
                                 raw_type: DataTypeRaw::Timestamp,
                                 is_nullable: false
-                            }
+                            },
+                            primary_key: false,
                         },
                     ]
                 },

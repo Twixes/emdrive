@@ -16,3 +16,4 @@ pub struct ExpectOk<'t, O> {
     pub outcome: O,
 }
 pub type ExpectResult<'t, O> = Result<ExpectOk<'t, O>, SyntaxError>;
+type ExpectFn<'t, O> = fn(&'t [Token]) -> ExpectResult<'t, O>;

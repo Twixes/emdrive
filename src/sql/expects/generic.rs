@@ -1,14 +1,36 @@
 use crate::sql::errors::*;
-use crate::sql::expects::{ExpectOk, ExpectResult};
+use crate::sql::expects::{ExpectFn, ExpectOk, ExpectResult};
 use crate::sql::tokenizer::*;
 
 pub fn consume_all<'t, O>(
     tokens: &'t [Token],
-    expect_something: fn(&'t [Token]) -> ExpectResult<'t, O>,
+    expect_something: ExpectFn<'t, O>,
 ) -> Result<O, SyntaxError> {
     let ExpectOk { rest, outcome, .. } = expect_something(tokens)?;
     expect_end_of_statement(rest)?;
     Ok(outcome)
+}
+
+pub fn optionalize<'t, O>(
+    tokens: &'t [Token],
+    expect_optional: ExpectFn<'t, O>,
+) -> ExpectOk<'t, Option<O>> {
+    match expect_optional(tokens) {
+        Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome,
+        }) => ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: Some(outcome),
+        },
+        Err(_) => ExpectOk {
+            rest: tokens,
+            tokens_consumed_count: 0,
+            outcome: None,
+        },
+    }
 }
 
 pub fn expect_identity<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Vec<Token>> {
@@ -90,7 +112,7 @@ pub fn expect_next_token<'t>(
 
 pub fn expect_enclosed<'t, O>(
     tokens: &'t [Token],
-    expect_inside: fn(&'t [Token]) -> ExpectResult<'t, O>,
+    expect_inside: ExpectFn<'t, O>,
     opening: Delimiter,
     closing: Delimiter,
 ) -> ExpectResult<'t, O> {
@@ -111,7 +133,7 @@ pub fn expect_enclosed<'t, O>(
 
 pub fn expect_comma_separated<'t, O>(
     tokens: &'t [Token],
-    expect_element: fn(&'t [Token]) -> ExpectResult<'t, O>,
+    expect_element: ExpectFn<'t, O>,
 ) -> ExpectResult<'t, Vec<O>> {
     let mut tokens_consumed_total_count = 0;
     let mut outcomes = Vec::<O>::new();
@@ -184,7 +206,7 @@ pub fn expect_enclosure<'t>(
 
 pub fn expect_enclosed_comma_separated<'t, O>(
     tokens: &'t [Token],
-    expect_element: fn(&'t [Token]) -> ExpectResult<'t, O>,
+    expect_element: ExpectFn<'t, O>,
 ) -> ExpectResult<'t, Vec<O>> {
     let ExpectOk {
         rest,

@@ -6,6 +6,7 @@ use crate::sql::tokenizer::*;
 pub struct ColumnDefinition {
     pub name: String,
     pub data_type: DataType,
+    pub primary_key: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -31,10 +32,29 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
         tokens_consumed_count: tokens_consumed_count_data_type,
         outcome: data_type,
     } = expect_data_type(rest)?;
+    let ExpectOk {
+        rest,
+        tokens_consumed_count: tokens_consumed_count_primary_key,
+        outcome: primary_key_option,
+    } = optionalize(rest, |tokens| {
+        expect_token_values_sequence(
+            tokens,
+            &[
+                TokenValue::Const(Keyword::Primary),
+                TokenValue::Const(Keyword::Key),
+            ],
+        )
+    });
     Ok(ExpectOk {
         rest,
-        tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_data_type,
-        outcome: ColumnDefinition { name, data_type },
+        tokens_consumed_count: tokens_consumed_count_name
+            + tokens_consumed_count_data_type
+            + tokens_consumed_count_primary_key,
+        outcome: ColumnDefinition {
+            name,
+            data_type,
+            primary_key: primary_key_option.is_some(),
+        },
     })
 }
 
