@@ -1,9 +1,9 @@
 [package]
-name = "metrobaza"
+name = "emdrive"
 version = "0.1.0"
 authors = ["Michael Matloka <michal@matloka.com>"]
 edition = "2018"
-repository = "https://github.com/Twixes/metrobaza/"
+repository = "https://github.com/Twixes/emdrive/"
 license = "Apache-2.0"
 
 [dependencies]

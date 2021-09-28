@@ -8,7 +8,7 @@ pub fn say_hello(state: gotham::state::State) -> (gotham::state::State, String) 
     (state, "Hello!".to_string())
 }
 
-/// Start Metrobaza server loop.
+/// Start server loop.
 pub async fn start_server(config: config::Config) {
     // TCP server starting
     let tcp_listen_address = net::SocketAddr::new(

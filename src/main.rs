@@ -1,4 +1,4 @@
-use metrobaza::{config, tcp};
+use emdrive::{config, tcp};
 
 #[tokio::main]
 async fn main() {

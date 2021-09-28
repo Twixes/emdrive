@@ -1,4 +1,4 @@
-# Metrobaza
+# Emdrive
 
 Database management system for fast similarity search within metric spaces, written in Rust.
 
@@ -32,7 +32,7 @@ Database management system for fast similarity search within metric spaces, writ
 Let's imagine you're running an image search engine. As a fan of geese you called it Gaggle.  
 Being a search engine operator, you run a bot which crawls pages on the internet.
 Every time the bot sees an image, it computes a [perceptual hash](https://en.wikipedia.org/wiki/Perceptual_hashing)
-of it and saves it, along with some other metadata, to a Metrobaza instance.
+of it and saves it, along with some other metadata, to an Emdrive instance.
 
 We'll be using database `gaggle`. A relevant table schema here may be:
 
@@ -60,7 +60,7 @@ VALUES (0b11001111, 'https://twixes.com/a.png', 1280, 820, '2077-01-01T21:37');
 
 Now, look, a user just uploaded their image to see similar occurences of it from the internet. The search engine
 calculated that image's hash to be `0b00001011` (binary representation of decimal `11`).  
-Let's check that against Metrobaza. We'll be using the `@` distance operator, which always returns a number
+Let's check that against Emdrive. We'll be using the `@` distance operator, which always returns a number
 and is exclusively supported for `METRIC KEY` columns.
 
 ```SQL
@@ -76,7 +76,7 @@ It's a match! The image we saved previously has a similar hash, and we can now s
 ### Data storage
 
 ```bash
-$METRO_DATA_DIRECTORY # /var/lib/metrobaza/data by default
+$EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
 └── databases/
    └── gaggle/ # database
       └── tables/
@@ -95,7 +95,7 @@ Row size is the number of bytes actually needed by that specific row, rounded up
 
 Variable length columns have up to 4 length bytes before the actual value.
 
-Data stored by Metrobaza on disk is big-endian, meaning that less significant bytes have higher addresses
+Data stored by Emdrive on disk is big-endian, meaning that less significant bytes have higher addresses
 than more significant bytes – this is basically how humans write numbers down.
 
 ##### Why round up?
@@ -104,20 +104,20 @@ This is to reduce the number of reads and writes across disk blocks, whose size 
 
 #### Nullability
 
-Metrobaza types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
+Emdrive types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
 the table. For instance a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
 Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, otherwise it's 1.
 
 ### Launch configuration
 
-The following launch configuration settings are available for Metrobaza instances.
-They are applied on instance launch from environment variables in the format `METRO_${SETTING_NAME_UPPERCASE}`
-(i.e. setting `data_directory` is set with variable `METRO_DATA_DIRECTORY`).
+The following launch configuration settings are available for Emdrive instances.
+They are applied on instance launch from environment variables in the format `EMDRIVE_${SETTING_NAME_UPPERCASE}`
+(i.e. setting `data_directory` is set with variable `EMDRIVE_DATA_DIRECTORY`).
 If a setting's environment variable is not set, its default value will be used.
 
 | Name | Type | Default value | Description |
 | --- | --- | --- | --- |
-| `data_directory` | `STRING` | `"/var/lib/metrobaza/data"` | Location of all data, including system tables |
+| `data_directory` | `STRING` | `"/var/lib/emdrive/data"` | Location of all data, including system tables |
 | `http_listen_host` | `STRING` | `"127.0.0.1"` | Host on which the HTTP server will listen |
 | `http_listen_port` | `UINT16` | `8824` | Port on which the HTTP server will listen |
 
@@ -129,9 +129,5 @@ If a setting's environment variable is not set, its default value will be used.
 
 ## Benchmarks
 
-| Postgres | MySQL | ClickHouse | ⚡️ Metrobaza |
+| Postgres | MySQL | ClickHouse | ⚡️ Emdrive |
 | --- | --- | --- | --- |
-
-## Etymology
-
-metryka (metric) + baza danych (database) = Metrobaza

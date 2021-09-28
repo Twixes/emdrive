@@ -42,7 +42,7 @@ impl<'a> Index<'a> {
     fn create_empty_file(&self) -> io::Result<fs::File> {
         let index_file_path = self.get_file_path();
         let index_dir_path = index_file_path.parent().unwrap();
-        std::fs::create_dir_all(index_dir_path).expect(&format!("Cannot create index file for collection {}, because its directory {} is improper! Consider changing METRO_data_directory (currently {})", &self.collection_name, index_dir_path.to_str().unwrap(), self.config.data_directory));
+        std::fs::create_dir_all(index_dir_path).expect(&format!("Cannot create index file for collection {}, because its directory {} is improper! Consider changing setting data_directory (currently {})", &self.collection_name, index_dir_path.to_str().unwrap(), self.config.data_directory));
         fs::File::create(index_file_path)
     }
 

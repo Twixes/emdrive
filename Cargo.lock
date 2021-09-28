@@ -151,6 +151,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "emdrive"
+version = "0.1.0"
+dependencies = [
+ "cargo-husky",
+ "chrono",
+ "futures",
+ "gotham",
+ "num",
+ "pretty_assertions",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -478,20 +492,6 @@ name = "memchr"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
-
-[[package]]
-name = "metrobaza"
-version = "0.1.0"
-dependencies = [
- "cargo-husky",
- "chrono",
- "futures",
- "gotham",
- "num",
- "pretty_assertions",
- "serde",
- "tokio",
-]
 
 [[package]]
 name = "mime"

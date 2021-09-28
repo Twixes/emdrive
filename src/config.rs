@@ -1,9 +1,9 @@
 use std::{env, fmt, str};
 
-/// Metrobaza configuration.
+/// DBMS configuration.
 #[derive(Debug)]
 pub struct Config {
-    /// Path to database state, i.e. saved data. Conventionally `metrobaza/` in `/var/lib/`.
+    /// Path to database state, i.e. saved data. Conventionally `emdrive/` in `/var/lib/`.
     pub data_directory: String,
     /// TCP interface listener host, `127.0.0.1` by default.
     pub tcp_listen_host: String,
@@ -14,7 +14,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Config {
         Config {
-            data_directory: "/var/lib/metrobaza/data".to_string(),
+            data_directory: "/var/lib/emdrive/data".to_string(),
             tcp_listen_host: "127.0.0.1".to_string(),
             tcp_listen_port: 8824,
         }
@@ -26,14 +26,14 @@ impl Config {
         let default = Config::default();
         Config {
             data_directory: get_env_or("data_directory", default.data_directory),
-            tcp_listen_host: get_env_or("TCP_LISTEN_HOST", default.tcp_listen_host),
-            tcp_listen_port: get_env_cast_or("TCP_LISTEN_PORT", default.tcp_listen_port),
+            tcp_listen_host: get_env_or("tcp_listen_host", default.tcp_listen_host),
+            tcp_listen_port: get_env_cast_or("tcp_listen_port", default.tcp_listen_port),
         }
     }
 }
 
 fn get_env(key: &str) -> Result<String, env::VarError> {
-    env::var(format!("METRO_{}", &key.to_uppercase()))
+    env::var(format!("EMDRIVE_{}", &key.to_uppercase()))
 }
 
 fn get_env_or(key: &str, default: String) -> String {
