@@ -2,7 +2,6 @@ pub mod config;
 pub mod data;
 mod metrics;
 mod queries;
-mod sql;
 pub mod tcp;
 mod utils;
 

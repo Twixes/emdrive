@@ -1,13 +1,7 @@
-use crate::sql::errors::*;
-use crate::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
-use crate::sql::tokenizer::*;
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct InsertStatement {
-    pub table_name: String,
-    pub column_names: Vec<String>,
-    pub values: Vec<Vec<Token>>,
-}
+use crate::queries::errors::*;
+use crate::queries::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
+use crate::queries::sql::tokenizer::*;
+use crate::queries::statement_types::InsertStatement;
 
 /// Conjure an InsertStatement from tokens following INSERT.
 pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatement> {
@@ -27,7 +21,7 @@ pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatemen
         rest,
         tokens_consumed_count: tokens_consumed_count_values,
         outcome: values,
-    } = expect_enclosed_comma_separated(rest, expect_identity)?;
+    } = expect_enclosed_comma_separated(rest, expect_identity)?; // TODO: fix value parsing
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: 2 // +2 to account for INTO + VALUES
@@ -36,7 +30,7 @@ pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatemen
         outcome: InsertStatement {
             table_name,
             column_names,
-            values,
+            values: Vec::new(),
         },
     })
 }

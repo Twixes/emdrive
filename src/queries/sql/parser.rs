@@ -1,4 +1,6 @@
-use super::errors::*;
+use crate::queries::errors::*;
+use crate::queries::statement_types::CreateTableStatement;
+use crate::queries::statement_types::InsertStatement;
 use super::expects::*;
 use super::tokenizer::*;
 
@@ -63,6 +65,8 @@ pub enum Statement {
 
 #[cfg(test)]
 mod tests {
+    use crate::queries::component_types::{ColumnDefinition, DataInstance, DataType, DataTypeRaw, TableDefinition};
+
     use super::*;
     use pretty_assertions::assert_eq;
 
@@ -125,7 +129,7 @@ mod tests {
     #[test]
     fn parsing_works_with_insert() {
         let statement = "INSERT INTO xyz (foo, bar)
-        VALUES (0b11001111, 'https://twixes.com/a.png');";
+        VALUES (1815, 'Waterloo');";
 
         let detected_statement = parse_statement(&statement).unwrap();
 
@@ -134,26 +138,7 @@ mod tests {
             Statement::Insert(InsertStatement {
                 table_name: "xyz".to_string(),
                 column_names: vec!["foo".to_string(), "bar".to_string(),],
-                values: vec![
-                    vec![Token {
-                        value: TokenValue::Arbitrary("0b11001111".to_string()),
-                        line_number: 2
-                    }],
-                    vec![
-                        Token {
-                            value: TokenValue::Delimiting(Delimiter::SingleQuote),
-                            line_number: 2
-                        },
-                        Token {
-                            value: TokenValue::Arbitrary("https://twixes.com/a.png".to_string()),
-                            line_number: 2
-                        },
-                        Token {
-                            value: TokenValue::Delimiting(Delimiter::SingleQuote),
-                            line_number: 2
-                        }
-                    ]
-                ]
+                values: vec![DataInstance::UInt128(1815), DataInstance::String("Waterloo".to_string())]
             })
         )
     }

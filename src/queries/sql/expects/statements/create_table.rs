@@ -1,25 +1,8 @@
-use crate::sql::errors::*;
-use crate::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
-use crate::sql::tokenizer::*;
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct ColumnDefinition {
-    pub name: String,
-    pub data_type: DataType,
-    pub primary_key: bool,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct TableDefinition {
-    pub name: String,
-    pub columns: Vec<ColumnDefinition>,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct CreateTableStatement {
-    pub table: TableDefinition,
-    pub if_not_exists: bool,
-}
+use crate::queries::component_types::{ColumnDefinition, TableDefinition};
+use crate::queries::errors::*;
+use crate::queries::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
+use crate::queries::sql::tokenizer::*;
+use crate::queries::statement_types::CreateTableStatement;
 
 pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ColumnDefinition> {
     let ExpectOk {

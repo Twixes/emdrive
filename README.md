@@ -84,7 +84,7 @@ $EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
             └── data/ # table rows
                └── 0 # segment 0 of row data
             └── indexes/ # table indexes, used for quicker row lookup
-               └── hash-mtree-hamming # bplustree index on column url
+               └── hash-emtree-hamming # bplustree index on column url
             └── meta # table metadata
 ```
 

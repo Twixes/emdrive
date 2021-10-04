@@ -1,6 +1,6 @@
-use crate::sql::errors::*;
-use crate::sql::expects::{ExpectFn, ExpectOk, ExpectResult};
-use crate::sql::tokenizer::*;
+use crate::queries::errors::*;
+use crate::queries::sql::expects::{ExpectFn, ExpectOk, ExpectResult};
+use crate::queries::sql::tokenizer::*;
 
 pub fn consume_all<'t, O>(
     tokens: &'t [Token],
@@ -208,6 +208,7 @@ pub fn expect_enclosed_comma_separated<'t, O>(
     tokens: &'t [Token],
     expect_element: ExpectFn<'t, O>,
 ) -> ExpectResult<'t, Vec<O>> {
+    const SEPARATOR: TokenValue = TokenValue::Delimiting(Delimiter::Comma);
     let ExpectOk {
         rest,
         tokens_consumed_count,
@@ -217,10 +218,18 @@ pub fn expect_enclosed_comma_separated<'t, O>(
         Delimiter::ParenthesisOpening,
         Delimiter::ParenthesisClosing,
     )?;
+    // Disallow empty enclosures
+    if enclosure_tokens.len() == 0 {
+        return Err(SyntaxError(format!(
+            "Found an enclosure delimited by {} and {} as expected, but it's empty.",
+            tokens[0],
+            tokens[tokens_consumed_count-1],
+        )));
+    }
     let mut elements = Vec::<O>::new();
     let mut previous_separator_offset: usize = 0;
     for (current_index, current_token) in enclosure_tokens.iter().enumerate() {
-        if current_token.value == TokenValue::Delimiting(Delimiter::Comma) {
+        if current_token.value == SEPARATOR {
             if previous_separator_offset == current_index {
                 expect_element(&enclosure_tokens[..previous_separator_offset])?;
             }
@@ -236,7 +245,7 @@ pub fn expect_enclosed_comma_separated<'t, O>(
     if final_element_tokens.len() == 0 {
         return Err(SyntaxError(format!(
             "Found disallowed trailing {}.",
-            &enclosure_tokens[previous_separator_offset - 1]
+            &SEPARATOR
         )));
     }
     elements.push(expect_element(&enclosure_tokens[previous_separator_offset..])?.outcome);
@@ -413,6 +422,8 @@ mod expect_token_single_tests {
 
 #[cfg(test)]
 mod expect_enclosure_tests {
+    use crate::queries::component_types::DataTypeRaw;
+
     use super::*;
     use pretty_assertions::assert_eq;
 

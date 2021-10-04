@@ -1,6 +1,7 @@
-use crate::sql::errors::*;
-use crate::sql::expects::{generic::*, ExpectOk, ExpectResult};
-use crate::sql::tokenizer::*;
+use crate::queries::component_types::{DataType, DataTypeRaw};
+use crate::queries::errors::*;
+use crate::queries::sql::expects::{generic::*, ExpectOk, ExpectResult};
+use crate::queries::sql::tokenizer::*;
 
 pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
     let ExpectOk {
