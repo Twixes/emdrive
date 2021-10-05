@@ -19,10 +19,9 @@ pub async fn start_server(config: config::Config) {
     // Future to wait for Ctrl+C.
     let signal = async {
         tokio::signal::ctrl_c().map_err(|_| ()).await?;
-        println!("Ctrl+C pressed");
         Ok::<(), ()>(())
     };
 
     future::select(server.boxed(), signal.boxed()).await;
-    println!("Shutting down gracefully");
+    timeprintln!("💤 Shutting down gracefully");
 }

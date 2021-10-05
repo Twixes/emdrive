@@ -21,6 +21,21 @@ impl Default for Config {
     }
 }
 
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}={:?}\n{}={:?}\n{}={:?}",
+            envify_config_key("data_directory"),
+            self.data_directory,
+            envify_config_key("tcp_listen_host"),
+            self.tcp_listen_host,
+            envify_config_key("tcp_listen_port"),
+            self.tcp_listen_port
+        )
+    }
+}
+
 impl Config {
     pub fn new() -> Config {
         let default = Config::default();
@@ -32,8 +47,13 @@ impl Config {
     }
 }
 
+// Format internal config key to environment variable name.
+fn envify_config_key(key: &str) -> String {
+    format!("EMDRIVE_{}", &key.to_uppercase())
+}
+
 fn get_env(key: &str) -> Result<String, env::VarError> {
-    env::var(format!("EMDRIVE_{}", &key.to_uppercase()))
+    env::var(envify_config_key(key))
 }
 
 fn get_env_or(key: &str, default: String) -> String {

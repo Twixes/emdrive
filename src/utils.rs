@@ -1,9 +1,9 @@
 /// Equivalent to `println!`, just with a local time marker prepended.
 #[macro_export]
 macro_rules! timeprintln {
-    () => (println!("{}", chrono::Local::now().format("[%H:%M:%S]")));
+    () => (println!("{}", chrono::Local::now().format("[%T%.3f]")));
     ($($arg:tt)*) => ({
-        print!("{}", chrono::Local::now().format("[%H:%M:%S] "));
+        print!("{} ", chrono::Local::now().format("[%T%.3f]"));
         println!($($arg)*);
     })
 }
@@ -11,9 +11,9 @@ macro_rules! timeprintln {
 /// Equivalent to `eprintln!`, just with a local time marker prepended.
 #[macro_export]
 macro_rules! etimeprintln {
-    () => (eprintln!("{}", chrono::Local::now().format("[%H:%M:%S]")));
+    () => (eprintln!("{}", chrono::Local::now().format("[%T%.3f]")));
     ($($arg:tt)*) => ({
-        eprint!("{}", chrono::Local::now().format("[%H:%M:%S] "));
+        eprint!("{} ", chrono::Local::now().format("[%T%.3f]"));
         eprintln!($($arg)*);
     })
 }
