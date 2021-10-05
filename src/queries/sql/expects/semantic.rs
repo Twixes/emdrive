@@ -1,4 +1,4 @@
-use crate::queries::component_types::{DataType, DataTypeRaw};
+use crate::queries::component_types::{DataInstance, DataType, DataTypeRaw};
 use crate::queries::errors::*;
 use crate::queries::sql::expects::{generic::*, ExpectOk, ExpectResult};
 use crate::queries::sql::tokenizer::*;
@@ -72,6 +72,43 @@ pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
             is_nullable,
         },
     })
+}
+
+pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataInstance> {
+    let ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: found_token,
+    } = expect_next_token(tokens, &"a value")?;
+    match found_token {
+        Token {
+            value: TokenValue::String(found_string),
+            ..
+        } => Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataInstance::String(found_string.to_string()),
+        }),
+        Token {
+            value: TokenValue::Arbitrary(found_number_candidate),
+            ..
+        } => match found_number_candidate.parse::<u32>() {
+            // UInt32 is the default integer type
+            Ok(found_number) => Ok(ExpectOk {
+                rest,
+                tokens_consumed_count,
+                outcome: DataInstance::UInt32(found_number),
+            }),
+            Err(_) => Err(SyntaxError(format!(
+                "Expected a value, instead found {}.",
+                found_number_candidate
+            ))),
+        },
+        wrong_token => Err(SyntaxError(format!(
+            "Expected a value, instead found {}.",
+            wrong_token
+        ))),
+    }
 }
 
 #[cfg(test)]
@@ -262,6 +299,42 @@ mod expect_data_type_wrapped_tests {
             Err(SyntaxError(
                 "Expected a data type, instead found end of statement.".to_string()
             ))
+        )
+    }
+}
+
+#[cfg(test)]
+mod expect_data_instance_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn returns_ok_string() {
+        assert_eq!(
+            expect_data_instance(&[Token {
+                value: TokenValue::String("foo".to_string()),
+                line_number: 1
+            },]),
+            Ok(ExpectOk {
+                rest: &[][..],
+                tokens_consumed_count: 1,
+                outcome: DataInstance::String("foo".to_string())
+            })
+        )
+    }
+
+    #[test]
+    fn returns_ok_number() {
+        assert_eq!(
+            expect_data_instance(&[Token {
+                value: TokenValue::Arbitrary("1227".to_string()),
+                line_number: 1
+            }]),
+            Ok(ExpectOk {
+                rest: &[][..],
+                tokens_consumed_count: 1,
+                outcome: DataInstance::UInt32(1227)
+            })
         )
     }
 }

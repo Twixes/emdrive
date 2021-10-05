@@ -1,8 +1,8 @@
+use super::expects::*;
+use super::tokenizer::*;
 use crate::queries::errors::*;
 use crate::queries::statement_types::CreateTableStatement;
 use crate::queries::statement_types::InsertStatement;
-use super::expects::*;
-use super::tokenizer::*;
 
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
     let tokens = tokenize_statement(input);
@@ -65,7 +65,9 @@ pub enum Statement {
 
 #[cfg(test)]
 mod tests {
-    use crate::queries::component_types::{ColumnDefinition, DataInstance, DataType, DataTypeRaw, TableDefinition};
+    use crate::queries::component_types::{
+        ColumnDefinition, DataInstance, DataType, DataTypeRaw, TableDefinition,
+    };
 
     use super::*;
     use pretty_assertions::assert_eq;
@@ -138,7 +140,10 @@ mod tests {
             Statement::Insert(InsertStatement {
                 table_name: "xyz".to_string(),
                 column_names: vec!["foo".to_string(), "bar".to_string(),],
-                values: vec![DataInstance::UInt128(1815), DataInstance::String("Waterloo".to_string())]
+                values: vec![
+                    DataInstance::UInt32(1815),
+                    DataInstance::String("Waterloo".to_string())
+                ]
             })
         )
     }

@@ -21,7 +21,7 @@ pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatemen
         rest,
         tokens_consumed_count: tokens_consumed_count_values,
         outcome: values,
-    } = expect_enclosed_comma_separated(rest, expect_identity)?; // TODO: fix value parsing
+    } = expect_enclosed_comma_separated(rest, expect_data_instance)?;
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: 2 // +2 to account for INTO + VALUES
@@ -30,7 +30,7 @@ pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatemen
         outcome: InsertStatement {
             table_name,
             column_names,
-            values: Vec::new(),
+            values,
         },
     })
 }

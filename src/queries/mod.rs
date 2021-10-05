@@ -1,8 +1,8 @@
 use std::hash::Hash;
 
-mod sql;
-mod errors;
 mod component_types;
+mod errors;
+mod sql;
 mod statement_types;
 
 /// Trait for calculating distances used in the BK tree structure.

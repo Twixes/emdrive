@@ -6,16 +6,16 @@ use std::fmt::{self, Debug};
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Delimiter {
     Comma,
-    SingleQuote,
-    DoubleQuote,
     ParenthesisOpening,
     ParenthesisClosing,
 }
 
 impl Delimiter {
     /// Delimiting characters that affect statement meaning. Each one is a Delimiter variant.
-    const MEANINGFUL_CHARS: &'static [char] = &[',', '\'', '"', '(', ')'];
+    const MEANINGFUL_CHARS: &'static [char] = &[',', '(', ')'];
     const STATEMENT_SEPARATOR: char = ';';
+    const STRING_MARKER: char = '\'';
+    const ESCAPE_CHARACTER: char = '\\';
 }
 
 impl fmt::Display for Delimiter {
@@ -25,8 +25,6 @@ impl fmt::Display for Delimiter {
             "{}",
             match self {
                 Self::Comma => "comma `,`",
-                Self::SingleQuote => "single quote `'`",
-                Self::DoubleQuote => "double quote `\"`",
                 Self::ParenthesisOpening => "opening parenthesis `(`",
                 Self::ParenthesisClosing => "closing parenthesis `)`",
             }
@@ -40,8 +38,6 @@ impl FromStr for Delimiter {
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         match candidate {
             "," => Ok(Self::Comma),
-            "'" => Ok(Self::SingleQuote),
-            "\"" => Ok(Self::DoubleQuote),
             "(" => Ok(Self::ParenthesisOpening),
             ")" => Ok(Self::ParenthesisClosing),
             _ => Err(format!(
@@ -118,6 +114,7 @@ pub enum TokenValue {
     Delimiting(Delimiter),
     Const(Keyword),
     Type(DataTypeRaw),
+    String(String),
     Arbitrary(String),
 }
 
@@ -127,6 +124,7 @@ impl fmt::Display for TokenValue {
             Self::Delimiting(value) => fmt::Display::fmt(&value, f),
             Self::Const(value) => fmt::Display::fmt(&value, f),
             Self::Type(value) => value.fmt(f),
+            Self::String(value) => write!(f, "string `\"{}\"`", value),
             Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value),
         }
     }
@@ -136,17 +134,23 @@ impl FromStr for TokenValue {
     type Err = ();
 
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
-        Ok(
-            if let Ok(delimiting_token) = Delimiter::from_str(candidate) {
-                Self::Delimiting(delimiting_token)
-            } else if let Ok(const_token) = Keyword::from_str(candidate) {
-                Self::Const(const_token)
-            } else if let Ok(suppoted_type) = DataTypeRaw::from_str(candidate) {
-                Self::Type(suppoted_type)
+        if let Ok(delimiter) = Delimiter::from_str(candidate) {
+            Ok(Self::Delimiting(delimiter))
+        } else if let Ok(keyword) = Keyword::from_str(candidate) {
+            Ok(Self::Const(keyword))
+        } else if let Ok(data_type_raw) = DataTypeRaw::from_str(candidate) {
+            Ok(Self::Type(data_type_raw))
+        } else {
+            let mut candidate_chars = candidate.chars();
+            if let (Some(Delimiter::STRING_MARKER), Some(Delimiter::STRING_MARKER)) =
+                (candidate_chars.nth(0), candidate_chars.nth_back(0))
+            {
+                // We only need to use as_str() here as the first and last chars have been consumed by nth()s
+                Ok(Self::String(candidate_chars.as_str().to_string()))
             } else {
-                Self::Arbitrary(candidate.to_string())
-            },
-        )
+                Ok(Self::Arbitrary(candidate.to_string()))
+            }
+        }
     }
 }
 
@@ -165,38 +169,66 @@ impl fmt::Display for Token {
 pub fn tokenize_statement(input: &str) -> Vec<Token> {
     let mut tokens = Vec::<Token>::new();
     for (line_index, line) in input.lines().enumerate() {
-        let transparent_split_results = line
-            .split_whitespace()
-            .filter(|element| !element.is_empty());
-        let mut meaningful_split_results = Vec::<String>::new();
-        let mut was_eos_encountered = false;
-        for pre_token in transparent_split_results {
-            let mut current_element: String = "".to_string();
-            for character in pre_token.chars() {
-                // End tokenization when a statement separator (semicolon) is encountered
-                if character == Delimiter::STATEMENT_SEPARATOR {
-                    was_eos_encountered = true;
-                    break;
+        let mut token_candidates = Vec::<String>::new();
+        let mut current_candidate: String = "".to_string();
+        let mut is_current_character_escaped = false;
+        let mut is_current_character_inside_string = false;
+        for character in line.chars() {
+            // Act upon tokenization-level semantics, but only if the current character is not escaped with a backslash
+            if !is_current_character_escaped {
+                // Detect if the next character is escaped
+                if character == Delimiter::ESCAPE_CHARACTER {
+                    is_current_character_escaped = true;
+                    continue;
                 }
-                // Recognize delimiters early, as they don't have to be separated by whitespace from other tokens
-                if Delimiter::MEANINGFUL_CHARS.contains(&character) {
-                    if !current_element.is_empty() {
-                        meaningful_split_results.push(current_element.clone());
+                // Detect if this character starts/ends a string
+                if character == Delimiter::STRING_MARKER {
+                    current_candidate.push(character);
+                    if is_current_character_inside_string {
+                        token_candidates.push(current_candidate.clone());
+                        current_candidate.clear();
+                        is_current_character_inside_string = false;
+                    } else {
+                        is_current_character_inside_string = true;
                     }
-                    meaningful_split_results.push(character.to_string());
-                    current_element.clear();
-                } else {
-                    current_element.push(character);
+                    continue;
                 }
+                if !is_current_character_inside_string {
+                    // End tokenization when a statement separator (semicolon) is encountered
+                    if character == Delimiter::STATEMENT_SEPARATOR {
+                        break;
+                    }
+                    // Recognize delimiters earlier, as they don't have to be separated by whitespace from other tokens
+                    if Delimiter::MEANINGFUL_CHARS.contains(&character) {
+                        if !current_candidate.is_empty() {
+                            token_candidates.push(current_candidate.clone());
+                            current_candidate.clear();
+                        }
+                        token_candidates.push(character.to_string());
+                        continue;
+                    }
+                    // Break up non-delimiter tokens on whitespace
+                    if character.is_ascii_whitespace() {
+                        if !current_candidate.is_empty() {
+                            token_candidates.push(current_candidate.clone());
+                            current_candidate.clear();
+                        }
+                        continue;
+                    }
+                }
+            } else {
+                // Reset escape status for the next character
+                is_current_character_escaped = false;
             }
-            if !current_element.is_empty() {
-                meaningful_split_results.push(current_element);
-            }
-            if was_eos_encountered {
-                break;
-            }
+            // The default case for a character is just being appended to the working token candidate string
+            current_candidate.push(character.clone());
         }
-        tokens.extend(meaningful_split_results.iter().map(|candidate| Token {
+        // Add line remainded to token candidates
+        if !current_candidate.is_empty() {
+            token_candidates.push(current_candidate);
+        }
+        // Process token candidates found on this line
+        tokens.extend(token_candidates.iter().map(|candidate| Token {
             value: TokenValue::from_str(&candidate).unwrap(),
             line_number: line_index + 1,
         }))
@@ -368,6 +400,91 @@ mod tests {
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 3,
+            },
+        ];
+        assert_eq!(&detected_tokens, &expected_tokens)
+    }
+
+    #[test]
+    fn tokenization_supports_various_strings() {
+        let statement = "INSERT INTO test
+            (foo, bar, baz)
+            VALUES ('123', '   x ', 'The \\'Moon\\'')";
+
+        let detected_tokens = tokenize_statement(&statement);
+
+        let expected_tokens = [
+            Token {
+                value: TokenValue::Const(Keyword::Insert),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Into),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Arbitrary("test".to_string()),
+                line_number: 1,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Arbitrary("foo".to_string()),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Arbitrary("bar".to_string()),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Arbitrary("baz".to_string()),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                line_number: 2,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Values),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::String("123".to_string()),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::String("   x ".to_string()),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Comma),
+                line_number: 3,
+            },
+            Token {
+                value: TokenValue::String("The \'Moon\'".to_string()),
+                line_number: 3,
             },
             Token {
                 value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),

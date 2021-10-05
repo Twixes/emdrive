@@ -223,7 +223,7 @@ pub fn expect_enclosed_comma_separated<'t, O>(
         return Err(SyntaxError(format!(
             "Found an enclosure delimited by {} and {} as expected, but it's empty.",
             tokens[0],
-            tokens[tokens_consumed_count-1],
+            tokens[tokens_consumed_count - 1],
         )));
     }
     let mut elements = Vec::<O>::new();
