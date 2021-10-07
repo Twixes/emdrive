@@ -12,7 +12,9 @@ Database management system for fast similarity search within metric spaces, writ
 | `UINT64` | unsigned 64-bit integer | 8 bytes | ≥ 0 and < 2⁶⁴ |
 | `UINT128` | unsigned 128-bit integer | 16 bytes | ≥ 0 and < 2¹²⁸ |
 | `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
-| `STRING(n)` | UTF-8 string | 2+n bytes | ≤ n characters, where n < 2¹⁶ |
+| `STRING(n)` | UTF-8 string | 2+n bytes | ≤ `n` characters, where `n` ≤ 2048 |
+
+Emdrive types are **non-nullable by default**. They can made so simply by wrapping them in `NULLABLE()`. For instance a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
 
 ### Indexes
 
@@ -81,32 +83,44 @@ $EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
    └── gaggle/ # database
       └── tables/
          └── photos_seen/ # table
-            └── data/ # table rows
-               └── 0 # segment 0 of row data
+            └── data # core table data
             └── indexes/ # table indexes, used for quicker row lookup
                └── hash-emtree-hamming # bplustree index on column url
             └── meta # table metadata
 ```
 
-#### Row data structure
+#### Data structure
 
+Every table has a `data` file containing all its, well, data. Such `data` files are made up of **pages**.
 
-Row size is the number of bytes actually needed by that specific row, rounded up to the nearest power of 2. A constraint is that a row cannot exceed 4096 bytes.
+#### Page structure
 
-Variable length columns have up to 4 length bytes before the actual value.
+Every page is 8 KiB in size.
 
-Data stored by Emdrive on disk is big-endian, meaning that less significant bytes have higher addresses
-than more significant bytes – this is basically how humans write numbers down.
+There are 3 page types:
+- meta - The initial page, contains directions for the whole `data` file.
+    - page type (1 byte, `u8`) - `0x00`.
+    - schema version (2 bytes, `u16`) - `0x0000` currently.
+    - B+ tree root page index (4 bytes, `u32`)
+- B+ tree node
+    - page type (1 byte, `u8`) - `0x30`.
+    - row count (8 bytes, `u64`) - Number of rows contained by all child leaves of the node. A `COUNT` and `OFFSET` optimization.
+    - fan-out (2 bytes, `u16`) - Number of keys in this node.
+    - child page indexes ((fan-out + 1) * 4 bytes, `u32`) - Child pointers.
+    - keys (fan-out of them) - Key values.
+- B+ tree leaf
+    - page type (1 byte, `u8`) - `0x31`.
+    - next leaf page index (4 bytes, `u32`)
+    - row count (2 bytes, `u16`) - Number of rows in this leaf.
+    - rows (row count of them) – See [row structure](#row-structure).
 
-##### Why round up?
+> Data stored by Emdrive on disk is big-endian, meaning that less significant bytes have higher addresses than more significant bytes (similar to how humans write numbers down).
 
-This is to reduce the number of reads and writes across disk blocks, whose size is a power of 2 – commonly 4096 bytes.
+#### Row structure
 
-#### Nullability
-
-Emdrive types are **non-nullable by default**. They can made so by simply wrapping them in `NULLABLE()` when defining
-the table. For instance a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
-Values of nullable columns are prefixed with a marker byte. If the value _is_ null, that byte is 0, otherwise it's 1.
+Rows contain values in the same order as their columns in the table definition, except variable-length values come after all fixed-length ones.
+Variable-length values are also prefixed with 2 length bytes (`u16`).
+Nullable values are prefixed with 1 marker byte (`u8`), which is `0x00` if the value is null, otherwise `0x01`.
 
 ### Launch configuration
 
