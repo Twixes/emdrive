@@ -1,4 +1,5 @@
-use crate::{config::Config, etimeprintln, timeprintln};
+use crate::config::Config;
+use log::*;
 use std::{
     convert::TryInto,
     fs,
@@ -68,7 +69,7 @@ impl<'a> Index<'a> {
         let data = match raw_data {
             Ok(raw_data) => {
                 let result = self.parse_index_raw_data(raw_data);
-                timeprintln!("Result: {:?}", result);
+                debug!("Result: {:?}", result);
                 result
             }
             Err(err) if err.kind() == io::ErrorKind::NotFound => {
@@ -76,11 +77,11 @@ impl<'a> Index<'a> {
                 vec![]
             }
             Err(err) => {
-                etimeprintln!("Error while reading index data: {}", err);
+                debug!("Error while reading index data: {}", err);
                 process::exit(1);
             }
         };
-        timeprintln!("Found {} index data: {:?}", &self.collection_name, &data);
+        debug!("Found {} index data: {:?}", &self.collection_name, &data);
         self.data = data;
         self.data.clone()
     }

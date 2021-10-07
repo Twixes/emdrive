@@ -1,9 +1,11 @@
-use emdrive::{config, server, timeprintln};
+use emdrive::{config, server};
+use log::*;
 
 #[tokio::main]
 async fn main() {
-    timeprintln!("🔢 Starting Emdrive...");
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    info!("🔢 Starting Emdrive...");
     let config = config::Config::new();
-    timeprintln!("⚙️ Launch configuration:\n{}", config);
+    info!("⚙️ Launch configuration:\n{}", config);
     server::start_server(config).await;
 }

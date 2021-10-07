@@ -1,6 +1,7 @@
-use crate::{config, etimeprintln, timeprintln};
+use crate::config;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use log::*;
 use std::{convert, net, str::FromStr};
 
 async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
@@ -27,7 +28,7 @@ async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
         .expect("failed to install Ctrl+C signal handler");
-    timeprintln!("💤 Shutting down gracefully");
+    info!("💤 Shutting down gracefully");
 }
 
 /// Start server loop.
@@ -43,9 +44,9 @@ pub async fn start_server(config: config::Config) {
         .serve(make_svc)
         .with_graceful_shutdown(shutdown_signal());
 
-    timeprintln!("👂 Listening on {}...", tcp_listen_address);
+    info!("👂 Listening on {}...", tcp_listen_address);
 
     if let Err(e) = server.await {
-        etimeprintln!("🛑 Encountered server error: {}", e);
+        error!("🛑 Encountered server error: {}", e);
     };
 }
