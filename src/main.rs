@@ -4,6 +4,6 @@ use emdrive::{config, server, timeprintln};
 async fn main() {
     timeprintln!("🔢 Starting Emdrive...");
     let config = config::Config::new();
-    timeprintln!("⚙️ Configuration:\n{}", config);
+    timeprintln!("⚙️ Launch configuration:\n{}", config);
     server::start_server(config).await;
 }
