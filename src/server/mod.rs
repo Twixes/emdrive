@@ -27,7 +27,7 @@ async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
 async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
-        .expect("failed to install Ctrl+C signal handler");
+        .expect("Failed to install Ctrl+C signal handler");
     info!("💤 Shutting down gracefully");
 }
 
