@@ -7,6 +7,8 @@ use std::{
     mem, path, process,
 };
 
+// Massively work-in-progress!
+
 pub struct Index<'a> {
     collection_name: String,
     data: Vec<u128>,

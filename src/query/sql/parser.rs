@@ -1,8 +1,7 @@
 use super::expects::*;
 use super::tokenizer::*;
-use crate::queries::errors::*;
-use crate::queries::statement_types::CreateTableStatement;
-use crate::queries::statement_types::InsertStatement;
+use crate::construct::statements::{CreateTableStatement, InsertStatement};
+use crate::query::errors::*;
 
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
     let tokens = tokenize_statement(input);
@@ -65,7 +64,7 @@ pub enum Statement {
 
 #[cfg(test)]
 mod tests {
-    use crate::queries::component_types::{
+    use crate::construct::components::{
         ColumnDefinition, DataInstance, DataType, DataTypeRaw, TableDefinition,
     };
 

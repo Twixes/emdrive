@@ -1,7 +1,6 @@
-use crate::queries::errors::*;
-use crate::queries::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
-use crate::queries::sql::tokenizer::*;
-use crate::queries::statement_types::InsertStatement;
+use crate::construct::statements::InsertStatement;
+use crate::query::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
+use crate::query::sql::tokenizer::*;
 
 /// Conjure an InsertStatement from tokens following INSERT.
 pub fn expect_insert<'t>(tokens: &'t [Token]) -> ExpectResult<'t, InsertStatement> {

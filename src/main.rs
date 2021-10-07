@@ -1,4 +1,4 @@
-use emdrive::{config, server};
+use emdrive::{config, serve};
 use log::*;
 
 #[tokio::main]
@@ -8,5 +8,5 @@ async fn main() {
     info!("🔢 Starting Emdrive...");
     let config = config::Config::new();
     info!("⚙️ Launch configuration:\n{}", config);
-    server::start_server(config).await;
+    serve::start_server(config).await;
 }

@@ -2,8 +2,8 @@ mod generic;
 mod semantic;
 mod statements;
 
-use crate::queries::errors::*;
-use crate::queries::sql::tokenizer::*;
+use crate::query::errors::*;
+use crate::query::sql::tokenizer::*;
 
 pub use generic::*;
 pub use semantic::*;

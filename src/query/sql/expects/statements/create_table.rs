@@ -1,8 +1,9 @@
-use crate::queries::component_types::{ColumnDefinition, TableDefinition};
-use crate::queries::errors::*;
-use crate::queries::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
-use crate::queries::sql::tokenizer::*;
-use crate::queries::statement_types::CreateTableStatement;
+use crate::construct::{
+    components::{ColumnDefinition, TableDefinition},
+    statements::CreateTableStatement,
+};
+use crate::query::sql::expects::{generic::*, semantic::*, ExpectOk, ExpectResult};
+use crate::query::sql::tokenizer::*;
 
 pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ColumnDefinition> {
     let ExpectOk {

@@ -1,6 +1,6 @@
-use crate::queries::errors::*;
-use crate::queries::sql::expects::{ExpectFn, ExpectOk, ExpectResult};
-use crate::queries::sql::tokenizer::*;
+use crate::query::errors::*;
+use crate::query::sql::expects::{ExpectFn, ExpectOk, ExpectResult};
+use crate::query::sql::tokenizer::*;
 
 pub fn consume_all<'t, O>(
     tokens: &'t [Token],
@@ -422,7 +422,7 @@ mod expect_token_single_tests {
 
 #[cfg(test)]
 mod expect_enclosure_tests {
-    use crate::queries::component_types::DataTypeRaw;
+    use crate::construct::components::DataTypeRaw;
 
     use super::*;
     use pretty_assertions::assert_eq;

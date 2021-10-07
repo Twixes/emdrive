@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use crate::queries::{component_types::DataTypeRaw, errors::*};
+use crate::construct::components::DataTypeRaw;
+use crate::query::errors::SyntaxError;
 use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]

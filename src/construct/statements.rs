@@ -1,4 +1,4 @@
-use super::component_types::*;
+use super::components::*;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CreateTableStatement {
