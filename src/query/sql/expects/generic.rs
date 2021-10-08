@@ -219,7 +219,7 @@ pub fn expect_enclosed_comma_separated<'t, O>(
         Delimiter::ParenthesisClosing,
     )?;
     // Disallow empty enclosures
-    if enclosure_tokens.len() == 0 {
+    if enclosure_tokens.is_empty() {
         return Err(SyntaxError(format!(
             "Found an enclosure delimited by {} and {} as expected, but it's empty.",
             tokens[0],
@@ -242,7 +242,7 @@ pub fn expect_enclosed_comma_separated<'t, O>(
     }
     // If the final vector is empty, it means there was a trailing separator, which is generally disallowed in SQL
     let final_element_tokens = &enclosure_tokens[previous_separator_offset..];
-    if final_element_tokens.len() == 0 {
+    if final_element_tokens.is_empty() {
         return Err(SyntaxError(format!(
             "Found disallowed trailing {}.",
             &SEPARATOR

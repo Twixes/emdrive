@@ -46,10 +46,10 @@ pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTyp
 }
 
 pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
-    let is_nullable = match expect_token_value(tokens, &TokenValue::Const(Keyword::Nullable)) {
-        Ok(..) => true,
-        _ => false,
-    };
+    let is_nullable = matches!(
+        expect_token_value(tokens, &TokenValue::Const(Keyword::Nullable)),
+        Ok(_)
+    );
     let ExpectOk {
         rest,
         tokens_consumed_count,

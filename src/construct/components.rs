@@ -65,7 +65,7 @@ pub struct ColumnDefinition {
 
 impl Validatable for ColumnDefinition {
     fn validate(&self) -> Result<(), String> {
-        if self.name.len() == 0 {
+        if self.name.is_empty() {
             return Err("A column must have a name".into());
         }
         Ok(())
@@ -80,10 +80,10 @@ pub struct TableDefinition {
 
 impl Validatable for TableDefinition {
     fn validate(&self) -> Result<(), String> {
-        if self.name.len() == 0 {
+        if self.name.is_empty() {
             return Err("A table must have a name".into());
         }
-        if self.columns.len() == 0 {
+        if self.columns.is_empty() {
             return Err("A table must have at least one column".into());
         }
         let mut primary_key_count = 0;

@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use crate::construct::components::DataTypeRaw;
-use crate::query::errors::SyntaxError;
 use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -144,7 +143,7 @@ impl FromStr for TokenValue {
         } else {
             let mut candidate_chars = candidate.chars();
             if let (Some(Delimiter::STRING_MARKER), Some(Delimiter::STRING_MARKER)) =
-                (candidate_chars.nth(0), candidate_chars.nth_back(0))
+                (candidate_chars.next(), candidate_chars.next_back())
             {
                 // We only need to use as_str() here as the first and last chars have been consumed by nth()s
                 Ok(Self::String(candidate_chars.as_str().to_string()))
@@ -222,7 +221,7 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
                 is_current_character_escaped = false;
             }
             // The default case for a character is just being appended to the working token candidate string
-            current_candidate.push(character.clone());
+            current_candidate.push(character);
         }
         // Add line remainded to token candidates
         if !current_candidate.is_empty() {
@@ -230,7 +229,7 @@ pub fn tokenize_statement(input: &str) -> Vec<Token> {
         }
         // Process token candidates found on this line
         tokens.extend(token_candidates.iter().map(|candidate| Token {
-            value: TokenValue::from_str(&candidate).unwrap(),
+            value: TokenValue::from_str(candidate).unwrap(),
             line_number: line_index + 1,
         }))
     }

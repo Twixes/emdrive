@@ -96,7 +96,7 @@ impl convert::TryFrom<&[u8]> for Page {
             // Meta
             0x00 => {
                 let layout_version = blob[1];
-                let b_tree_root_page_index = extract_u32_at(&blob, 2);
+                let b_tree_root_page_index = extract_u32_at(blob, 2);
                 Ok(Self::Meta {
                     layout_version,
                     b_tree_root_page_index,
@@ -109,8 +109,8 @@ impl convert::TryFrom<&[u8]> for Page {
             }
             // BTreeLeaf
             0x21 => {
-                let next_leaf_page_index = extract_u32_at(&blob, 1);
-                let row_count = extract_u16_at(&blob, 5);
+                let next_leaf_page_index = extract_u32_at(blob, 1);
+                let row_count = extract_u16_at(blob, 5);
                 Ok(Self::BTreeLeaf {
                     next_leaf_page_index,
                     row_count,
@@ -125,11 +125,11 @@ impl convert::TryFrom<&[u8]> for Page {
 }
 
 fn extract_u16_at(blob: &[u8], index: usize) -> u16 {
-    u16::from_be_bytes(array_ref!(blob, index, 2).clone())
+    u16::from_be_bytes(*array_ref!(blob, index, 2))
 }
 
 fn extract_u32_at(blob: &[u8], index: usize) -> u32 {
-    u32::from_be_bytes(array_ref!(blob, index, 4).clone())
+    u32::from_be_bytes(*array_ref!(blob, index, 4))
 }
 
 #[cfg(test)]
