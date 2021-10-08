@@ -1,4 +1,5 @@
-use crate::construct::components::TableDefinition;
+use arrayref::array_ref;
+
 use std::convert;
 
 /// Each page is 8 KiB long.
@@ -74,7 +75,7 @@ impl convert::Into<Vec<u8>> for Page {
                 page_blob.splice(6..8, row_count.to_be_bytes());
             }
         };
-        assert_eq!(page_blob.len(), PAGE_SIZE);
+        assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault – ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
         page_blob
     }
 }
@@ -85,7 +86,7 @@ impl convert::TryFrom<&[u8]> for Page {
     fn try_from(blob: &[u8]) -> Result<Self, Self::Error> {
         if blob.len() != PAGE_SIZE {
             return Err(format!(
-                "Received a {} B long page - proper page size is {} B",
+                "Invalid page size {} B - each page must be {} B long",
                 blob.len(),
                 PAGE_SIZE
             ));
@@ -98,39 +99,37 @@ impl convert::TryFrom<&[u8]> for Page {
                 let b_tree_root_page_index = extract_u32_at(&blob, 2);
                 Ok(Self::Meta {
                     layout_version,
-                    b_tree_root_page_index
+                    b_tree_root_page_index,
                 })
-            },
+            }
             // BTreeNode
             0x20 => {
                 // TODO
                 Ok(Self::BTreeNode)
-            },
+            }
             // BTreeLeaf
             0x21 => {
                 let next_leaf_page_index = extract_u32_at(&blob, 1);
                 let row_count = extract_u16_at(&blob, 5);
                 Ok(Self::BTreeLeaf {
                     next_leaf_page_index,
-                    row_count
+                    row_count,
                 })
-            },
-            _ => Err(format!("Page type marker byte {:#04x} is invalid - recognized values are: 0x00, 0x20, 0x21", blob[0]))
+            }
+            _ => Err(format!(
+                "Invalid page type marker byte {:#04x} - recognized values are: 0x00, 0x20, 0x21",
+                blob[0]
+            )),
         }
     }
 }
 
 fn extract_u16_at(blob: &[u8], index: usize) -> u16 {
-    u16::from_be_bytes([blob[index], blob[index + 1]])
+    u16::from_be_bytes(array_ref!(blob, index, 2).clone())
 }
 
 fn extract_u32_at(blob: &[u8], index: usize) -> u32 {
-    u32::from_be_bytes([
-        blob[index],
-        blob[index + 1],
-        blob[index + 2],
-        blob[index + 3],
-    ])
+    u32::from_be_bytes(array_ref!(blob, index, 4).clone())
 }
 
 #[cfg(test)]

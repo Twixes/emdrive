@@ -15,6 +15,7 @@ hyper = { version = "0.14.13", features = ["http1", "server", "runtime", "tcp", 
 futures = "0.3.1"
 log = "0.4.4"
 env_logger = "0.9.0"
+arrayref = "0.3.6"
 
 [dev-dependencies]
 pretty_assertions = "0.7"
