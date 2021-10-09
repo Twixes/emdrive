@@ -88,15 +88,7 @@ $EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
             └── data # core table data
 ```
 
-#### Data structure
-
-Every table has a `data` file containing all its, well, data. Such `data` files are made up of **pages**.
-
-#### Row structure
-
-Rows contain values in the same order as their columns in the table definition, except variable-length values come after all fixed-length ones.
-Variable-length values are also prefixed with 2 length bytes (`u16`).
-Nullable values are prefixed with 1 marker byte (`u8`), which is `0x00` if the value is null, otherwise `0x01`.
+Every table has a `data` file containing all its, well, data. Such `data` files are made up of pages.
 
 ### Launch configuration
 
