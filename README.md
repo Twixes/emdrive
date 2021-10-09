@@ -11,6 +11,7 @@ Database management system for fast similarity search within metric spaces, writ
 | `UINT32` | unsigned 32-bit integer | 4 bytes | ≥ 0 and < 2³² |
 | `UINT64` | unsigned 64-bit integer | 8 bytes | ≥ 0 and < 2⁶⁴ |
 | `UINT128` | unsigned 128-bit integer | 16 bytes | ≥ 0 and < 2¹²⁸ |
+| `BOOL` | boolean value | 1 byte | either `TRUE` (non-zero) or `FALSE` (zero) |
 | `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
 | `UUID` | UUID-like value | 16 bytes | any sequence of 128 bits |
 | `STRING(n)` | UTF-8 string | 2+n bytes | ≤ `n` characters, where `n` ≤ 2048 |
@@ -85,37 +86,11 @@ $EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
       └── tables/
          └── photos_seen/ # table
             └── data # core table data
-            └── indexes/ # table indexes, used for quicker row lookup
-               └── hash-emtree-hamming # bplustree index on column url
-            └── meta # table metadata
 ```
 
 #### Data structure
 
 Every table has a `data` file containing all its, well, data. Such `data` files are made up of **pages**.
-
-#### Page structure
-
-Each page is 8 KiB long.
-
-There are 3 page types:
-- meta - The initial page, contains directions for the whole `data` file.
-    - page type (1 byte, `u8`) - `0x00`.
-    - layout version (1 byte, `u8`) - `0x0000` currently.
-    - B+ tree root page index (4 bytes, `u32`)
-- B+ tree node
-    - page type (1 byte, `u8`) - `0x20`.
-    - row count (8 bytes, `u64`) - Number of rows contained by all child leaves of the node. A `COUNT` and `OFFSET` optimization.
-    - fan-out (2 bytes, `u16`) - Number of keys in this node.
-    - child page indexes ((fan-out + 1) * 4 bytes, `u32`) - Child pointers.
-    - keys (fan-out of them) - Key values.
-- B+ tree leaf
-    - page type (1 byte, `u8`) - `0x21`.
-    - next leaf page index (4 bytes, `u32`)
-    - row count (2 bytes, `u16`) - Number of rows in this leaf.
-    - rows (row count of them) – See [row structure](#row-structure).
-
-> Data stored by Emdrive on disk is big-endian, meaning that less significant bytes have higher addresses than more significant bytes (similar to how humans write numbers down).
 
 #### Row structure
 
