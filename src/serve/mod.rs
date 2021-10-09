@@ -32,7 +32,7 @@ async fn shutdown_signal() {
 }
 
 /// Start server loop.
-pub async fn start_server(config: config::Config) {
+pub async fn start_server(config: &config::Config) {
     let tcp_listen_address = net::SocketAddr::new(
         net::IpAddr::from_str(&config.tcp_listen_host).unwrap(),
         config.tcp_listen_port,

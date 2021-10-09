@@ -37,7 +37,7 @@ impl fmt::Display for Config {
 }
 
 impl Config {
-    pub fn new() -> Config {
+    pub fn from_env() -> Config {
         let default = Config::default();
         Config {
             data_directory: get_env_or("data_directory", default.data_directory),
