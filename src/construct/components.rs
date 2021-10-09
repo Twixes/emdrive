@@ -7,21 +7,10 @@ pub enum DataTypeRaw {
     UInt32,
     UInt64,
     UInt128,
+    Bool,
     Timestamp,
     Uuid,
     String,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum DataInstance {
-    UInt8(u8),
-    UInt16(u16),
-    UInt32(u32),
-    UInt64(u64),
-    UInt128(u128),
-    Timestamp(u64),
-    Uuid(u128),
-    String(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -40,6 +29,7 @@ impl FromStr for DataTypeRaw {
             "uint32" => Ok(Self::UInt32),
             "uint64" => Ok(Self::UInt64),
             "uint128" => Ok(Self::UInt128),
+            "bool" => Ok(Self::Bool),
             "timestamp" => Ok(Self::Timestamp),
             "uuid" => Ok(Self::Uuid),
             "string" => Ok(Self::String),
@@ -49,6 +39,26 @@ impl FromStr for DataTypeRaw {
             )),
         }
     }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum DataInstanceRaw {
+    UInt8(u8),
+    UInt16(u16),
+    UInt32(u32),
+    UInt64(u64),
+    UInt128(u128),
+    Bool(bool),
+    Timestamp(i64),
+    Uuid(u128),
+    String(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum DataInstance {
+    Direct(DataInstanceRaw),
+    Nullable(DataInstanceRaw),
+    Null,
 }
 
 trait Validatable {

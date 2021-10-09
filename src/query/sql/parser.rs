@@ -65,7 +65,7 @@ pub enum Statement {
 #[cfg(test)]
 mod tests {
     use crate::construct::components::{
-        ColumnDefinition, DataInstance, DataType, DataTypeRaw, TableDefinition,
+        ColumnDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw, TableDefinition,
     };
 
     use super::*;
@@ -140,8 +140,8 @@ mod tests {
                 table_name: "xyz".to_string(),
                 column_names: vec!["foo".to_string(), "bar".to_string(),],
                 values: vec![
-                    DataInstance::UInt32(1815),
-                    DataInstance::String("Waterloo".to_string())
+                    DataInstance::Direct(DataInstanceRaw::UInt32(1815)),
+                    DataInstance::Direct(DataInstanceRaw::String("Waterloo".into())),
                 ]
             })
         )

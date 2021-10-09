@@ -1,4 +1,4 @@
-use crate::construct::components::{DataInstance, DataType, DataTypeRaw};
+use crate::construct::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
 use crate::query::errors::*;
 use crate::query::sql::expects::{generic::*, ExpectOk, ExpectResult};
 use crate::query::sql::tokenizer::*;
@@ -82,12 +82,20 @@ pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataIns
     } = expect_next_token(tokens, &"a value")?;
     match found_token {
         Token {
+            value: TokenValue::Const(Keyword::Null),
+            ..
+        } => Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataInstance::Null,
+        }),
+        Token {
             value: TokenValue::String(found_string),
             ..
         } => Ok(ExpectOk {
             rest,
             tokens_consumed_count,
-            outcome: DataInstance::String(found_string.to_string()),
+            outcome: DataInstance::Direct(DataInstanceRaw::String(found_string.into())),
         }),
         Token {
             value: TokenValue::Arbitrary(found_number_candidate),
@@ -97,7 +105,7 @@ pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataIns
             Ok(found_number) => Ok(ExpectOk {
                 rest,
                 tokens_consumed_count,
-                outcome: DataInstance::UInt32(found_number),
+                outcome: DataInstance::Direct(DataInstanceRaw::UInt32(found_number)),
             }),
             Err(_) => Err(SyntaxError(format!(
                 "Expected a value, instead found {}.",
@@ -318,7 +326,7 @@ mod expect_data_instance_tests {
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 1,
-                outcome: DataInstance::String("foo".to_string())
+                outcome: DataInstance::Direct(DataInstanceRaw::String("foo".into()))
             })
         )
     }
@@ -333,7 +341,7 @@ mod expect_data_instance_tests {
             Ok(ExpectOk {
                 rest: &[][..],
                 tokens_consumed_count: 1,
-                outcome: DataInstance::UInt32(1227)
+                outcome: DataInstance::Direct(DataInstanceRaw::UInt32(1227))
             })
         )
     }

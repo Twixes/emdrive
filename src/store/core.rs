@@ -1,6 +1,12 @@
-use arrayref::array_ref;
+use std::{
+    convert::{From, TryFrom},
+    fmt::Debug,
+    mem, str,
+};
 
-use std::convert;
+use crate::construct::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
+
+use super::encoding::*;
 
 /// Each page is 8 KiB long.
 const PAGE_SIZE: usize = 8 * 1024;
@@ -8,9 +14,13 @@ const PAGE_SIZE: usize = 8 * 1024;
 /// Latest version of disk data layout. Useful for determining layout compatibility.
 const LATEST_LAYOUT_VERSION: u8 = 0;
 
-pub fn construct_blank_table() -> Vec<u8> {
+pub fn empty_page_blob() -> WriteBlob {
+    vec![0; PAGE_SIZE]
+}
+
+pub fn construct_blank_table() -> WriteBlob {
     // 2 pages, as that's the minimum number of them – 1. the meta page, 2. B+ tree root page (a leaf initially)
-    let mut core_blob: Vec<u8> = Vec::with_capacity(PAGE_SIZE * 2);
+    let mut core_blob: WriteBlob = Vec::with_capacity(PAGE_SIZE * 2);
     core_blob.append(
         &mut Page::Meta {
             layout_version: LATEST_LAYOUT_VERSION,
@@ -29,6 +39,9 @@ pub fn construct_blank_table() -> Vec<u8> {
     core_blob
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct Row<'b>(&'b [DataInstance]);
+
 /// Possible core page types.
 #[derive(Debug, PartialEq, Eq)]
 enum Page {
@@ -46,33 +59,35 @@ enum Page {
         /// Page index of the next leaf in order. 0 means that there's no next leaf, as 0 points to the meta page.
         next_leaf_page_index: u32,
         /// Number of rows stored by this leaf.
-        row_count: u16, // TODO: rows: Vec<Row>
+        row_count: u16,
     },
 }
 
-impl convert::Into<Vec<u8>> for Page {
-    fn into(self) -> Vec<u8> {
-        let mut page_blob: Vec<u8> = vec![0; PAGE_SIZE];
-        match self {
-            Self::Meta {
+impl From<Page> for WriteBlob {
+    fn from(page: Page) -> WriteBlob {
+        let mut page_blob: WriteBlob = empty_page_blob();
+        match page {
+            Page::Meta {
                 layout_version,
                 b_tree_root_page_index,
             } => {
-                page_blob[0] = 0x00; // Page type marker
-                page_blob[1] = layout_version;
-                page_blob.splice(2..6, b_tree_root_page_index.to_be_bytes());
+                let position = 0;
+                let position = 0x00u8.encode(&mut page_blob, position);
+                let position = layout_version.encode(&mut page_blob, position);
+                let _final_position = b_tree_root_page_index.encode(&mut page_blob, position);
             }
-            Self::BTreeNode => {
-                page_blob[0] = 0x20; // Page type marker
-                                     // TODO
+            Page::BTreeNode => {
+                0x20u8.encode(&mut page_blob, 0);
+                // TODO
             }
-            Self::BTreeLeaf {
+            Page::BTreeLeaf {
                 next_leaf_page_index,
                 row_count,
             } => {
-                page_blob[0] = 0x21; // Page type marker
-                page_blob.splice(1..5, next_leaf_page_index.to_be_bytes());
-                page_blob.splice(6..8, row_count.to_be_bytes());
+                let position = 0;
+                let position = 0x21u8.encode(&mut page_blob, position);
+                let position = next_leaf_page_index.encode(&mut page_blob, position);
+                let _final_position = row_count.encode(&mut page_blob, position);
             }
         };
         assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault – ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
@@ -80,10 +95,10 @@ impl convert::Into<Vec<u8>> for Page {
     }
 }
 
-impl convert::TryFrom<&[u8]> for Page {
+impl TryFrom<ReadBlob<'_>> for Page {
     type Error = String;
 
-    fn try_from(blob: &[u8]) -> Result<Self, Self::Error> {
+    fn try_from(blob: ReadBlob) -> Result<Self, Self::Error> {
         if blob.len() != PAGE_SIZE {
             return Err(format!(
                 "Invalid page size {} B - each page must be {} B long",
@@ -95,8 +110,8 @@ impl convert::TryFrom<&[u8]> for Page {
         match blob[0] {
             // Meta
             0x00 => {
-                let layout_version = blob[1];
-                let b_tree_root_page_index = extract_u32_at(blob, 2);
+                let (layout_version, rest) = u8::try_extract(&blob[1..])?;
+                let (b_tree_root_page_index, _final_rest) = u32::try_extract(rest)?;
                 Ok(Self::Meta {
                     layout_version,
                     b_tree_root_page_index,
@@ -105,12 +120,17 @@ impl convert::TryFrom<&[u8]> for Page {
             // BTreeNode
             0x20 => {
                 // TODO
+                // - page type (1 byte, `u8`) - `0x20`.
+                // - row count (8 bytes, `u64`) - Number of rows contained by all child leaves of the node. A `COUNT` and `OFFSET` optimization.
+                // - fan-out (2 bytes, `u16`) - Number of keys in this node.
+                // - child page indexes ((fan-out + 1) * 4 bytes, `u32`) - Child pointers.
+                // - keys (fan-out of them) - Key values.
                 Ok(Self::BTreeNode)
             }
             // BTreeLeaf
             0x21 => {
-                let next_leaf_page_index = extract_u32_at(blob, 1);
-                let row_count = extract_u16_at(blob, 5);
+                let (next_leaf_page_index, rest) = u32::try_extract(&blob[1..])?;
+                let (row_count, _final_rest) = u16::try_extract(rest)?;
                 Ok(Self::BTreeLeaf {
                     next_leaf_page_index,
                     row_count,
@@ -124,14 +144,6 @@ impl convert::TryFrom<&[u8]> for Page {
     }
 }
 
-fn extract_u16_at(blob: &[u8], index: usize) -> u16 {
-    u16::from_be_bytes(*array_ref!(blob, index, 2))
-}
-
-fn extract_u32_at(blob: &[u8], index: usize) -> u32 {
-    u32::from_be_bytes(*array_ref!(blob, index, 4))
-}
-
 #[cfg(test)]
 mod core_serialization_tests {
     use super::*;
@@ -140,7 +152,7 @@ mod core_serialization_tests {
 
     #[test]
     fn returns_ok() {
-        let blank_table_blob: Vec<u8> = construct_blank_table().into();
+        let blank_table_blob: WriteBlob = construct_blank_table();
         assert_eq!(
             Page::try_from(&blank_table_blob[..PAGE_SIZE]),
             Ok(Page::Meta {
@@ -154,6 +166,19 @@ mod core_serialization_tests {
                 next_leaf_page_index: 0,
                 row_count: 0
             })
+        );
+    }
+
+    #[test]
+    fn string_de_serialization_works() {
+        let sample: &str = "Uśmiech! 😋";
+        let mut blob = empty_page_blob();
+        sample.to_string().encode(&mut blob, 0);
+        let (decoded_smile, rest) = String::try_extract(&blob).unwrap();
+        assert_eq!(decoded_smile, sample.to_string());
+        assert_eq!(
+            rest.len(),
+            PAGE_SIZE - mem::size_of::<VarLen>() - sample.len()
         );
     }
 }

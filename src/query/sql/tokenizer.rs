@@ -62,6 +62,7 @@ pub enum Keyword {
     Primary,
     Metric,
     Key,
+    Null,
 }
 
 impl fmt::Display for Keyword {
@@ -82,6 +83,7 @@ impl fmt::Display for Keyword {
                 Keyword::Primary => "PRIMARY",
                 Keyword::Metric => "METRIC",
                 Keyword::Key => "KEY",
+                Keyword::Null => "NULL",
             }
         )
     }
@@ -104,6 +106,7 @@ impl FromStr for Keyword {
             "primary" => Ok(Self::Primary),
             "metric" => Ok(Self::Metric),
             "key" => Ok(Self::Key),
+            "null" => Ok(Self::Null),
             _ => Err(format!("`{}` does not refer to a const token", candidate)),
         }
     }
