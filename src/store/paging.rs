@@ -4,7 +4,9 @@ use std::{
     mem, str,
 };
 
-use crate::construct::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
+use crate::construct::components::{
+    DataInstance, DataInstanceRaw, DataType, DataTypeRaw, TableDefinition,
+};
 
 use super::encoding::*;
 
@@ -31,16 +33,13 @@ pub fn construct_blank_table() -> WriteBlob {
     core_blob.append(
         &mut Page::BTreeLeaf {
             next_leaf_page_index: 0,
-            row_count: 0,
+            rows: Vec::new(),
         }
         .into(),
     );
     assert_eq!(core_blob.len(), PAGE_SIZE * 2);
     core_blob
 }
-
-#[derive(Debug, PartialEq, Eq)]
-struct Row<'b>(&'b [DataInstance]);
 
 /// Possible core page types.
 #[derive(Debug, PartialEq, Eq)]
@@ -50,16 +49,15 @@ enum Page {
         /// Version of disk data layout that is in use.
         layout_version: u8,
         /// Page index of the B+ tree root. This is the single leaf when tree height is 1, after that it's a node.
-        b_tree_root_page_index: u32,
+        b_tree_root_page_index: PageIndex,
     },
     /// B+ tree node.
     BTreeNode,
     /// B+ tree leaf.
     BTreeLeaf {
         /// Page index of the next leaf in order. 0 means that there's no next leaf, as 0 points to the meta page.
-        next_leaf_page_index: u32,
-        /// Number of rows stored by this leaf.
-        row_count: u16,
+        next_leaf_page_index: PageIndex,
+        rows: Vec<Row>,
     },
 }
 
@@ -82,12 +80,14 @@ impl From<Page> for WriteBlob {
             }
             Page::BTreeLeaf {
                 next_leaf_page_index,
-                row_count,
+                rows,
             } => {
                 let position = 0;
                 let position = 0x21u8.encode(&mut page_blob, position);
                 let position = next_leaf_page_index.encode(&mut page_blob, position);
-                let _final_position = row_count.encode(&mut page_blob, position);
+                let position = LocalCount::try_from(rows.len())
+                    .unwrap()
+                    .encode(&mut page_blob, position);
             }
         };
         assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault – ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
@@ -95,27 +95,27 @@ impl From<Page> for WriteBlob {
     }
 }
 
-impl TryFrom<ReadBlob<'_>> for Page {
-    type Error = String;
+impl<'b> EncodableWithAssumption<'b> for Page {
+    type Assumption = TableDefinition;
 
-    fn try_from(blob: ReadBlob) -> Result<Self, Self::Error> {
-        if blob.len() != PAGE_SIZE {
-            return Err(format!(
-                "Invalid page size {} B - each page must be {} B long",
-                blob.len(),
-                PAGE_SIZE
-            ));
-        }
+    fn try_decode_assume(
+        blob: ReadBlob<'b>,
+        assumption: Self::Assumption,
+    ) -> Result<(Self, ReadBlob<'b>), String> {
+        let next_page = &blob[PAGE_SIZE..];
         // Select deserialization mode based on page type marker
         match blob[0] {
             // Meta
             0x00 => {
-                let (layout_version, rest) = u8::try_extract(&blob[1..])?;
-                let (b_tree_root_page_index, _final_rest) = u32::try_extract(rest)?;
-                Ok(Self::Meta {
-                    layout_version,
-                    b_tree_root_page_index,
-                })
+                let (layout_version, rest) = u8::try_decode(&blob[1..])?;
+                let (b_tree_root_page_index, _final_rest) = PageIndex::try_decode(rest)?;
+                Ok((
+                    Self::Meta {
+                        layout_version,
+                        b_tree_root_page_index,
+                    },
+                    next_page,
+                ))
             }
             // BTreeNode
             0x20 => {
@@ -125,16 +125,33 @@ impl TryFrom<ReadBlob<'_>> for Page {
                 // - fan-out (2 bytes, `u16`) - Number of keys in this node.
                 // - child page indexes ((fan-out + 1) * 4 bytes, `u32`) - Child pointers.
                 // - keys (fan-out of them) - Key values.
-                Ok(Self::BTreeNode)
+                Ok((Self::BTreeNode, next_page))
             }
             // BTreeLeaf
             0x21 => {
-                let (next_leaf_page_index, rest) = u32::try_extract(&blob[1..])?;
-                let (row_count, _final_rest) = u16::try_extract(rest)?;
-                Ok(Self::BTreeLeaf {
-                    next_leaf_page_index,
-                    row_count,
-                })
+                let (next_leaf_page_index, rest) = PageIndex::try_decode(&blob[1..])?;
+                let (row_count, rest) = LocalCount::try_decode(rest)?;
+                let mut rest = rest;
+                let mut rows: Vec<Row> = Vec::with_capacity(row_count as usize);
+                for i in 0..(row_count as usize) {
+                    let (row_address, i_rest) = LocalCount::try_decode(rest)?;
+                    rest = i_rest;
+                    Row::try_decode_assume(
+                        &blob[row_address as usize..],
+                        assumption
+                            .columns
+                            .iter()
+                            .map(|column| &column.data_type)
+                            .collect(),
+                    )?;
+                }
+                Ok((
+                    Self::BTreeLeaf {
+                        next_leaf_page_index,
+                        rows,
+                    },
+                    next_page,
+                ))
             }
             _ => Err(format!(
                 "Invalid page type marker byte {:#04x} - recognized values are: 0x00, 0x20, 0x21",
@@ -146,26 +163,34 @@ impl TryFrom<ReadBlob<'_>> for Page {
 
 #[cfg(test)]
 mod core_serialization_tests {
+    use crate::store::system::SystemTable;
+
     use super::*;
     use pretty_assertions::assert_eq;
-    use std::convert::TryFrom;
 
     #[test]
     fn returns_ok() {
         let blank_table_blob: WriteBlob = construct_blank_table();
         assert_eq!(
-            Page::try_from(&blank_table_blob[..PAGE_SIZE]),
-            Ok(Page::Meta {
+            Page::try_decode_assume(&blank_table_blob, SystemTable::Tables.get_definition())
+                .unwrap()
+                .0,
+            Page::Meta {
                 layout_version: LATEST_LAYOUT_VERSION,
                 b_tree_root_page_index: 1
-            })
+            }
         );
         assert_eq!(
-            Page::try_from(&blank_table_blob[PAGE_SIZE..]),
-            Ok(Page::BTreeLeaf {
+            Page::try_decode_assume(
+                &blank_table_blob[PAGE_SIZE..],
+                SystemTable::Tables.get_definition()
+            )
+            .unwrap()
+            .0,
+            Page::BTreeLeaf {
                 next_leaf_page_index: 0,
-                row_count: 0
-            })
+                rows: Vec::new()
+            }
         );
     }
 
@@ -174,7 +199,7 @@ mod core_serialization_tests {
         let sample: &str = "Uśmiech! 😋";
         let mut blob = empty_page_blob();
         sample.to_string().encode(&mut blob, 0);
-        let (decoded_smile, rest) = String::try_extract(&blob).unwrap();
+        let (decoded_smile, rest) = String::try_decode(&blob).unwrap();
         assert_eq!(decoded_smile, sample.to_string());
         assert_eq!(
             rest.len(),

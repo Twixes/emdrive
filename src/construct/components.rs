@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::HashSet, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DataTypeRaw {
@@ -97,7 +97,15 @@ impl Validatable for TableDefinition {
             return Err("A table must have at least one column".into());
         }
         let mut primary_key_count = 0;
+        let mut column_names: HashSet<String> = HashSet::new();
         for (column_index, column) in self.columns.iter().enumerate() {
+            if column_names.contains(&column.name) {
+                return Err(format!(
+                    "There is more than one column with name `{}` in table definition",
+                    column.name
+                ));
+            }
+            column_names.insert(column.name.clone());
             if column.primary_key {
                 primary_key_count += 1;
             }

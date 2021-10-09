@@ -1,4 +1,4 @@
-mod core;
 mod encoding;
 mod index;
+mod paging;
 mod system;
