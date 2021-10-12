@@ -16,14 +16,14 @@ Database management system for fast similarity search within metric spaces, writ
 | `UUID` | UUID-like value | 16 bytes | any sequence of 128 bits |
 | `STRING(n)` | UTF-8 string | 2+n bytes | ≤ `n` characters, where `n` ≤ 2048 |
 
-Emdrive types are **non-nullable by default**. They can made so simply by wrapping them in `NULLABLE()`. For instance a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
+Emdrive types are **non-nullable by default**. They can made so simply by wrapping them in `NULLABLE()`. For instance, a nullable string of maximum length 20 is `NULLABLE(STRING(20))`.
 
 ### Indexes
 
-| Name | Category | Description | Column types | Operators |
+| Name | Category | Description | Data types | Supported operators |
 | --- | --- | --- | --- | --- |
 | `btree` | general | [B+ tree](https://en.wikipedia.org/wiki/B+_tree) | all | `=` (equality) |
-| `emtree` | metric | [EM-tree](https://dl.gi.de/bitstream/handle/20.500.12116/648/paper31.pdf) | metric-dependent | `@` (distance) |
+| `emtree` | metric | [EM-tree](https://dl.gi.de/bitstream/handle/20.500.12116/648/paper31.pdf) | depending on chosen metric | `@` (distance) |
 
 ### Metrics
 
