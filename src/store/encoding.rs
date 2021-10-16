@@ -134,7 +134,7 @@ impl Encodable for String {
 
 impl Encodable for DataInstanceRaw {
     fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
-        panic!("`try_decode` would be too ambiguous for `DataInstanceRaw` – use `try_decode_assume` instead")
+        panic!("`try_decode` would be too ambiguous for `DataInstanceRaw` - `try_decode_assume` should be used instead")
     }
 
     fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
@@ -266,7 +266,7 @@ pub struct Row(pub Vec<DataInstance>);
 
 impl Encodable for Row {
     fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
-        panic!("`try_decode` would be too ambiguous for `Row` – use `try_decode_assume` instead")
+        panic!("`try_decode` would be too ambiguous for `Row` - `try_decode_assume` should be used instead")
     }
 
     fn encode(self, blob: &mut WriteBlob, mut position: usize) -> usize {

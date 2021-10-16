@@ -1,7 +1,10 @@
 use std::{
     convert::{From, TryFrom},
     fmt::Debug,
-    mem, str,
+    mem,
+    ops::RangeBounds,
+    str,
+    vec::Splice,
 };
 
 use crate::construct::components::{
@@ -21,7 +24,7 @@ pub fn empty_page_blob() -> WriteBlob {
 }
 
 pub fn construct_blank_table() -> WriteBlob {
-    // 2 pages, as that's the minimum number of them – 1. the meta page, 2. B+ tree root page (a leaf initially)
+    // 2 pages, as that's the minimum number of them - 1. the meta page, 2. B+ tree root page (a leaf initially)
     let mut core_blob: WriteBlob = Vec::with_capacity(PAGE_SIZE * 2);
     core_blob.append(
         &mut Page::Meta {
@@ -90,7 +93,7 @@ impl From<Page> for WriteBlob {
                     .encode(&mut page_blob, position);
             }
         };
-        assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault – ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
+        assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault - ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
         page_blob
     }
 }
