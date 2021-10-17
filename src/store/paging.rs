@@ -1,5 +1,5 @@
 use std::{
-    convert::{From, TryFrom},
+    convert::{From, TryFrom, TryInto},
     fmt::Debug,
     mem,
     ops::RangeBounds,
@@ -72,25 +72,31 @@ impl From<Page> for WriteBlob {
                 layout_version,
                 b_tree_root_page_index,
             } => {
-                let position = 0;
-                let position = 0x00u8.encode(&mut page_blob, position);
+                let position = 0x00u8.encode(&mut page_blob, 0); // Page type marker
                 let position = layout_version.encode(&mut page_blob, position);
                 let _final_position = b_tree_root_page_index.encode(&mut page_blob, position);
             }
             Page::BTreeNode => {
-                0x20u8.encode(&mut page_blob, 0);
-                // TODO
+                0x20u8.encode(&mut page_blob, 0); // Page type marker
+                                                  // TODO
             }
             Page::BTreeLeaf {
                 next_leaf_page_index,
                 rows,
             } => {
-                let position = 0;
-                let position = 0x21u8.encode(&mut page_blob, position);
+                let position = 0x21u8.encode(&mut page_blob, 0); // Page type marker
                 let position = next_leaf_page_index.encode(&mut page_blob, position);
-                let position = LocalCount::try_from(rows.len())
+                let mut position = LocalCount::try_from(rows.len())
                     .unwrap()
                     .encode(&mut page_blob, position);
+                // Position for writing rows, which is done starting with the back of the blob
+                let mut position_back = PAGE_SIZE;
+                for row in rows {
+                    position_back = row.encode_back(&mut page_blob, position_back);
+                    position = LocalCount::try_from(position_back)
+                        .unwrap()
+                        .encode(&mut page_blob, position);
+                }
             }
         };
         assert_eq!(page_blob.len(), PAGE_SIZE, "Page serialization fault - ended up with a blob that is {} B long, instead of the correct {} B", page_blob.len(), PAGE_SIZE);
@@ -136,17 +142,18 @@ impl<'b> EncodableWithAssumption<'b> for Page {
                 let (row_count, rest) = LocalCount::try_decode(rest)?;
                 let mut rest = rest;
                 let mut rows: Vec<Row> = Vec::with_capacity(row_count as usize);
-                for i in 0..(row_count as usize) {
-                    let (row_address, i_rest) = LocalCount::try_decode(rest)?;
-                    rest = i_rest;
-                    Row::try_decode_assume(
-                        &blob[row_address as usize..],
-                        assumption
-                            .columns
-                            .iter()
-                            .map(|column| &column.data_type)
-                            .collect(),
-                    )?;
+                let row_data_types: Vec<_> = assumption
+                    .columns
+                    .iter()
+                    .map(|column| &column.data_type)
+                    .collect();
+                for _ in 0..(row_count as usize) {
+                    let (row_address, iteration_rest) = LocalCount::try_decode(rest)?;
+                    assert!(row_address > 6, "Row address is {}, but it must be higher than 6, as the first 7 bytes of the page are metadata.", row_address);
+                    rest = iteration_rest;
+                    let (row, _iteration_rest_back) =
+                        Row::try_decode_assume(&blob[row_address as usize..], &row_data_types)?;
+                    rows.push(row);
                 }
                 Ok((
                     Self::BTreeLeaf {
@@ -172,27 +179,111 @@ mod core_serialization_tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn returns_ok() {
+    fn blank_table_de_serialization_works() {
         let blank_table_blob: WriteBlob = construct_blank_table();
-        assert_eq!(
+        let (page_0, rest) =
             Page::try_decode_assume(&blank_table_blob, SystemTable::Tables.get_definition())
-                .unwrap()
-                .0,
+                .unwrap();
+        assert_eq!(
+            page_0,
             Page::Meta {
                 layout_version: LATEST_LAYOUT_VERSION,
                 b_tree_root_page_index: 1
             }
         );
+        let (page_1, _rest) =
+            Page::try_decode_assume(rest, SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
-            Page::try_decode_assume(
-                &blank_table_blob[PAGE_SIZE..],
-                SystemTable::Tables.get_definition()
-            )
-            .unwrap()
-            .0,
+            page_1,
             Page::BTreeLeaf {
                 next_leaf_page_index: 0,
                 rows: Vec::new()
+            }
+        );
+    }
+
+    #[test]
+    fn empty_leaf_de_serialization_works() {
+        let leaf_blob: WriteBlob = Page::BTreeLeaf {
+            next_leaf_page_index: 0,
+            rows: Vec::new(),
+        }
+        .into();
+        let (leaf_page, _rest) =
+            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+        assert_eq!(
+            leaf_page,
+            Page::BTreeLeaf {
+                next_leaf_page_index: 0,
+                rows: Vec::new()
+            }
+        );
+    }
+
+    #[test]
+    fn single_row_de_serialization_works() {
+        let leaf_blob: WriteBlob = Page::BTreeLeaf {
+            next_leaf_page_index: 0,
+            rows: vec![Row(vec![
+                DataInstance::Direct(DataInstanceRaw::Uuid(2)),
+                DataInstance::Direct(DataInstanceRaw::String("xyz".into())),
+            ])],
+        }
+        .into();
+        let (leaf_page, _rest) =
+            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+        assert_eq!(
+            leaf_page,
+            Page::BTreeLeaf {
+                next_leaf_page_index: 0,
+                rows: vec![Row(vec![
+                    DataInstance::Direct(DataInstanceRaw::Uuid(2)),
+                    DataInstance::Direct(DataInstanceRaw::String("xyz".into()))
+                ])]
+            }
+        );
+    }
+
+    #[test]
+    fn triple_row_de_serialization_works() {
+        let leaf_blob: WriteBlob = Page::BTreeLeaf {
+            next_leaf_page_index: 99,
+            rows: vec![
+                Row(vec![
+                    DataInstance::Direct(DataInstanceRaw::Uuid(9798799999999)),
+                    DataInstance::Direct(DataInstanceRaw::String("Foo 🧐".into())),
+                ]),
+                Row(vec![
+                    DataInstance::Direct(DataInstanceRaw::Uuid(0)),
+                    DataInstance::Direct(DataInstanceRaw::String("Здравствуйте".into())),
+                ]),
+                Row(vec![
+                    DataInstance::Direct(DataInstanceRaw::Uuid(7)),
+                    DataInstance::Direct(DataInstanceRaw::String("".into())),
+                ]),
+            ],
+        }
+        .into();
+        let (leaf_page, _rest) =
+            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+        assert_eq!(
+            leaf_page,
+            Page::BTreeLeaf {
+                next_leaf_page_index: 99,
+                rows: vec![
+                    Row(vec![
+                        DataInstance::Direct(DataInstanceRaw::Uuid(9798799999999)),
+                        DataInstance::Direct(DataInstanceRaw::String("Foo 🧐".into())),
+                    ]),
+                    Row(vec![
+                        DataInstance::Direct(DataInstanceRaw::Uuid(0)),
+                        DataInstance::Direct(DataInstanceRaw::String("Здравствуйте".into())),
+                    ]),
+                    Row(vec![
+                        DataInstance::Direct(DataInstanceRaw::Uuid(7)),
+                        DataInstance::Direct(DataInstanceRaw::String("".into())),
+                    ])
+                ],
             }
         );
     }

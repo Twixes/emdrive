@@ -27,15 +27,18 @@ pub trait Encodable: Sized {
     fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String>;
 
     /// How many bytes are needed to encode this value.
+    /// Returns the advanced cursor position, 0 being the very front of the blob.
     fn encoded_size(&self) -> usize;
 
     /// Encode and write this value to blob at specified position.
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize;
+    /// Returns the advanced cursor position, 0 being the very front of the blob.
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize;
 
     /// Like `encode`, but writing to the end of the blob.
-    fn encode_back(self, blob: &mut WriteBlob, position: usize) -> usize {
-        let encoded_size = self.encoded_size();
-        self.encode(blob, blob.len() - encoded_size - position)
+    fn encode_back(&self, blob: &mut WriteBlob, position: usize) -> usize {
+        let retreated_position = position - self.encoded_size();
+        self.encode(blob, retreated_position);
+        retreated_position
     }
 }
 
@@ -63,7 +66,7 @@ macro_rules! encodable_number_impl {
                 ))
             }
 
-            fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
+            fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
                 let advanced_position = position + self.encoded_size();
                 blob.splice(position..advanced_position, self.to_be_bytes());
                 advanced_position
@@ -84,8 +87,8 @@ impl Encodable for u8 {
         Ok((blob[0], &blob[1..]))
     }
 
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
-        blob[position] = self;
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
+        blob[position] = *self;
         position + 1
     }
 
@@ -99,8 +102,8 @@ impl Encodable for bool {
         Ok((blob[0] != 0, &blob[1..]))
     }
 
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
-        blob[position] = self as u8;
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
+        blob[position] = *self as u8;
         position + 1
     }
 
@@ -119,7 +122,7 @@ impl Encodable for String {
         }
     }
 
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
         let char_count = self.len();
         let position = VarLen::try_from(char_count).unwrap().encode(blob, position);
         let advanced_position = position + char_count;
@@ -137,7 +140,7 @@ impl Encodable for DataInstanceRaw {
         panic!("`try_decode` would be too ambiguous for `DataInstanceRaw` - `try_decode_assume` should be used instead")
     }
 
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
         match self {
             Self::UInt8(value) => value.encode(blob, position),
             Self::UInt16(value) => value.encode(blob, position),
@@ -219,7 +222,7 @@ impl Encodable for DataInstance {
         panic!("`try_decode` would be too ambiguous for `DataInstance` – use `try_decode_assume` instead")
     }
 
-    fn encode(self, blob: &mut WriteBlob, position: usize) -> usize {
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
         match self {
             Self::Null => true.encode(blob, position), // true signifies NULL
             Self::Nullable(value) => {
@@ -269,8 +272,8 @@ impl Encodable for Row {
         panic!("`try_decode` would be too ambiguous for `Row` - `try_decode_assume` should be used instead")
     }
 
-    fn encode(self, blob: &mut WriteBlob, mut position: usize) -> usize {
-        for value in self.0 {
+    fn encode(&self, blob: &mut WriteBlob, mut position: usize) -> usize {
+        for value in &self.0 {
             position = value.encode(blob, position)
         }
         position
@@ -282,7 +285,7 @@ impl Encodable for Row {
 }
 
 impl<'b> EncodableWithAssumption<'b> for Row {
-    type Assumption = Vec<&'b DataType>;
+    type Assumption = &'b [&'b DataType];
 
     fn try_decode_assume(
         mut blob: ReadBlob<'b>,
