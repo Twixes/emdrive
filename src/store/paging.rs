@@ -1,8 +1,6 @@
-use std::{fmt::Debug, mem};
+use std::fmt::Debug;
 
-use crate::construct::components::{
-    DataInstance, DataInstanceRaw, DataType, DataTypeRaw, TableDefinition,
-};
+use crate::construct::components::TableDefinition;
 
 use super::encoding::*;
 
@@ -166,10 +164,11 @@ impl<'b> EncodableWithAssumption<'b> for Page {
 
 #[cfg(test)]
 mod core_serialization_tests {
-    use crate::store::system::SystemTable;
-
     use super::*;
+    use crate::construct::components::{DataInstance, DataInstanceRaw};
+    use crate::store::system::SystemTable;
     use pretty_assertions::assert_eq;
+    use std::mem;
 
     #[test]
     fn blank_table_de_serialization_works() {
