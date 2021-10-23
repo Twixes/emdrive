@@ -2,7 +2,7 @@
 name = "emdrive"
 version = "0.1.0"
 authors = ["Michael Matloka <michal@matloka.com>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/Twixes/emdrive/"
 license = "Apache-2.0"
 
