@@ -8,7 +8,7 @@ async fn main() {
         name: "Emdrive".into(),
         version: env!("CARGO_PKG_VERSION").into(),
         authors: "".into(),
-        homepage: "https://github.com/Twixes/emdrive".into(),
+        homepage: env!("CARGO_PKG_REPOSITORY").into(),
     });
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("emdrive=info"))
         .init();
