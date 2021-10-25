@@ -56,7 +56,7 @@ pub fn expect_table_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Tabl
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_name + tokens_consumed_count_columns,
-        outcome: TableDefinition { name, columns },
+        outcome: TableDefinition::new(name, columns),
     })
 }
 

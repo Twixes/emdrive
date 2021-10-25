@@ -84,8 +84,26 @@ impl Validatable for ColumnDefinition {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct TableDefinition {
+    // Table name.
     pub name: String,
+    // Column definitions.
     pub columns: Vec<ColumnDefinition>,
+    // Index of the primary key within column definitions.
+    pub primary_key_index: usize,
+}
+
+impl TableDefinition {
+    pub fn new(name: String, columns: Vec<ColumnDefinition>) -> Self {
+        let primary_key_index = columns
+            .iter()
+            .position(|column| column.primary_key)
+            .expect("A table must have a PRIMARY KEY column");
+        TableDefinition {
+            name,
+            columns,
+            primary_key_index,
+        }
+    }
 }
 
 impl Validatable for TableDefinition {

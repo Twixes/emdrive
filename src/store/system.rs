@@ -13,9 +13,9 @@ impl SystemTable {
 
     pub fn get_definition(&self) -> TableDefinition {
         match self {
-            Self::Tables => TableDefinition {
-                name: "tables".into(),
-                columns: vec![
+            Self::Tables => TableDefinition::new(
+                "tables".into(),
+                vec![
                     ColumnDefinition {
                         name: "id".into(),
                         data_type: DataType {
@@ -33,10 +33,10 @@ impl SystemTable {
                         primary_key: false,
                     },
                 ],
-            },
-            Self::Columns => TableDefinition {
-                name: "columns".into(),
-                columns: vec![
+            ),
+            Self::Columns => TableDefinition::new(
+                "columns".into(),
+                vec![
                     ColumnDefinition {
                         name: "id".into(),
                         data_type: DataType {
@@ -70,7 +70,7 @@ impl SystemTable {
                         primary_key: false,
                     },
                 ],
-            },
+            ),
         }
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::construct::components::TableDefinition;
+use crate::construct::components::{DataInstance, DataInstanceRaw, TableDefinition};
 
 use super::encoding::*;
 
@@ -46,11 +46,17 @@ enum Page {
         b_tree_root_page_index: PageIndex,
     },
     /// B+ tree node.
-    BTreeNode,
+    BTreeNode {
+        /// N primary keys.
+        primary_keys: Vec<DataInstanceRaw>,
+        /// N+1 pointers to child pages.
+        child_page_indexes: Vec<PageIndex>,
+    },
     /// B+ tree leaf.
     BTreeLeaf {
         /// Page index of the next leaf in order. 0 means that there's no next leaf, as 0 points to the meta page.
         next_leaf_page_index: PageIndex,
+        /// Row data.
         rows: Vec<Row>,
     },
 }
@@ -63,30 +69,56 @@ impl From<Page> for WriteBlob {
                 layout_version,
                 b_tree_root_page_index,
             } => {
-                let position = 0x00u8.encode(&mut page_blob, 0); // Page type marker
+                // 1. Page type marker
+                let position = 0x00u8.encode(&mut page_blob, 0);
+                // 2. Layout version
                 let position = layout_version.encode(&mut page_blob, position);
+                // 3. B+ tree root page index
                 let _final_position = b_tree_root_page_index.encode(&mut page_blob, position);
             }
-            Page::BTreeNode => {
-                0x20u8.encode(&mut page_blob, 0); // Page type marker
-                                                  // TODO
+            Page::BTreeNode {
+                primary_keys,
+                child_page_indexes,
+            } => {
+                // 1. Page type marker
+                let position = 0x20u8.encode(&mut page_blob, 0);
+                // 2. Arity of the node (number of children)
+                let mut position = LocalCount::try_from(child_page_indexes.len())
+                    .unwrap()
+                    .encode(&mut page_blob, position);
+                // 3. Primary keys
+                assert_eq!(primary_keys.len(), child_page_indexes.len() - 1);
+                for primary_key in primary_keys {
+                    position = primary_key.encode(&mut page_blob, position);
+                }
+                // 4. Child page indexes
+                for child_page_index in child_page_indexes {
+                    position = child_page_index.encode(&mut page_blob, position);
+                }
+                // TODO: Protect against page overflow
             }
             Page::BTreeLeaf {
                 next_leaf_page_index,
                 rows,
             } => {
-                let position = 0x21u8.encode(&mut page_blob, 0); // Page type marker
+                // 1. Page type marker
+                let position = 0x21u8.encode(&mut page_blob, 0);
+                // 2. Next leaf page index
                 let position = next_leaf_page_index.encode(&mut page_blob, position);
                 let mut position = LocalCount::try_from(rows.len())
                     .unwrap()
                     .encode(&mut page_blob, position);
-                // Position for writing rows, which is done starting with the back of the blob
+                // 3. Row data
+                // `position` tracks writing from the front, for writing from the back we introduce `position_back`
                 let mut position_back = PAGE_SIZE;
                 for row in rows {
+                    // First we write the row to the _back_ of the page
                     position_back = row.encode_back(&mut page_blob, position_back);
+                    // Then we save that rows position to the _front_ of the page
                     position = LocalCount::try_from(position_back)
                         .unwrap()
                         .encode(&mut page_blob, position);
+                    // TODO: Protect against page overflow and inadvertent overwrites in the middle of the page
                 }
             }
         };
@@ -119,13 +151,32 @@ impl<'b> EncodableWithAssumption<'b> for Page {
             }
             // BTreeNode
             0x20 => {
-                // TODO
-                // - page type (1 byte, `u8`) - `0x20`.
-                // - row count (8 bytes, `u64`) - Number of rows contained by all child leaves of the node. A `COUNT` and `OFFSET` optimization.
-                // - fan-out (2 bytes, `u16`) - Number of keys in this node.
-                // - child page indexes ((fan-out + 1) * 4 bytes, `u32`) - Child pointers.
-                // - keys (fan-out of them) - Key values.
-                Ok((Self::BTreeNode, next_page))
+                let (arity, rest) = LocalCount::try_decode(&blob[1..])?;
+                let mut rest = rest;
+                let mut primary_keys: Vec<DataInstanceRaw> = Vec::with_capacity(arity as usize - 1);
+                for _ in 0..(arity as usize - 1) {
+                    let (primary_key, iteration_rest) = DataInstanceRaw::try_decode_assume(
+                        rest,
+                        assumption.columns[assumption.primary_key_index]
+                            .data_type
+                            .raw_type,
+                    )?;
+                    rest = iteration_rest;
+                    primary_keys.push(primary_key);
+                }
+                let mut child_page_indexes: Vec<PageIndex> = Vec::with_capacity(arity as usize);
+                for _ in 0..(arity as usize) {
+                    let (child_page_index, iteration_rest) = PageIndex::try_decode(rest)?;
+                    rest = iteration_rest;
+                    child_page_indexes.push(child_page_index);
+                }
+                Ok((
+                    Self::BTreeNode {
+                        primary_keys,
+                        child_page_indexes,
+                    },
+                    next_page,
+                ))
             }
             // BTreeLeaf
             0x21 => {
@@ -276,6 +327,24 @@ mod core_serialization_tests {
                         DataInstance::Direct(DataInstanceRaw::String("".into())),
                     ])
                 ],
+            }
+        );
+    }
+
+    #[test]
+    fn node_de_serialization_works() {
+        let leaf_blob: WriteBlob = Page::BTreeNode {
+            primary_keys: vec![DataInstanceRaw::Uuid(123)],
+            child_page_indexes: vec![3u32, 4u32],
+        }
+        .into();
+        let (leaf_page, _rest) =
+            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+        assert_eq!(
+            leaf_page,
+            Page::BTreeNode {
+                primary_keys: vec![DataInstanceRaw::Uuid(123)],
+                child_page_indexes: vec![3u32, 4u32],
             }
         );
     }

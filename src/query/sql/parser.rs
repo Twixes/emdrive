@@ -85,9 +85,9 @@ mod tests {
         assert_eq!(
             detected_statement,
             Statement::CreateTable(CreateTableStatement {
-                table: TableDefinition {
-                    name: "test".to_string(),
-                    columns: vec![
+                table: TableDefinition::new(
+                    "test".to_string(),
+                    vec![
                         ColumnDefinition {
                             name: "id".to_string(),
                             data_type: DataType {
@@ -121,7 +121,7 @@ mod tests {
                             primary_key: false,
                         },
                     ]
-                },
+                ),
                 if_not_exists: true
             })
         )
