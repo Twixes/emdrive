@@ -10,3 +10,5 @@ where
 {
     fn distance(&self, other: &Self) -> D;
 }
+
+pub use sql::parser::parse_statement;

@@ -1,3 +1,3 @@
 mod expects;
-mod parser;
+pub mod parser;
 mod tokenizer;

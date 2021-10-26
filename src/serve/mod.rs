@@ -1,26 +1,55 @@
 use crate::config;
+use crate::query::parse_statement;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use log::*;
+use std::collections::HashMap;
 use std::{convert, net, str::FromStr};
 
 async fn echo(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
     match (req.uri().path(), req.method()) {
         ("/", &Method::POST) => {
+            // Read-write
             let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
-            let body_string = String::from_utf8(body_bytes.into_iter().collect()).unwrap();
-            Ok(Response::new(Body::from(body_string)))
+            let query = String::from_utf8(body_bytes.into_iter().collect()).unwrap();
+            let statement = parse_statement(&query);
+            Ok(Response::new(Body::from(query)))
         }
-        ("/", _) => {
-            let mut method_not_allowed = Response::default();
-            *method_not_allowed.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
-            Ok(method_not_allowed)
+        ("/", &Method::GET) => {
+            // Read-only
+            if let Some(query_string) = req.uri().query() {
+                if let Ok(query_map) =
+                    serde_urlencoded::from_str::<HashMap<String, String>>(query_string)
+                {
+                    if let Some(query) = query_map.get("query") {
+                        Ok(Response::new(Body::from(query.to_string())))
+                    } else {
+                        Ok(Response::builder()
+                            .status(StatusCode::BAD_REQUEST)
+                            .body(Body::default())
+                            .unwrap())
+                    }
+                } else {
+                    Ok(Response::builder()
+                        .status(StatusCode::BAD_REQUEST)
+                        .body(Body::default())
+                        .unwrap())
+                }
+            } else {
+                Ok(Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::default())
+                    .unwrap())
+            }
         }
-        _ => {
-            let mut not_found = Response::default();
-            *not_found.status_mut() = StatusCode::NOT_FOUND;
-            Ok(not_found)
-        }
+        ("/", _) => Ok(Response::builder()
+            .status(StatusCode::METHOD_NOT_ALLOWED)
+            .body(Body::default())
+            .unwrap()),
+        _ => Ok(Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::default())
+            .unwrap()),
     }
 }
 

@@ -29,6 +29,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
             ],
         )
     });
+    // TODO: Test against types like UINT16(8)
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_name

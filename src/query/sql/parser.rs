@@ -23,7 +23,7 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
                 rest,
                 outcome: found_token_second,
                 ..
-            } = expect_next_token(rest, &format!("{} or {}", Keyword::Create, Keyword::Insert))?;
+            } = expect_next_token(rest, &Keyword::Table.to_string())?;
             match found_token_second {
                 // CREATE TABLE
                 Token {
