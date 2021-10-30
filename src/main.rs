@@ -10,7 +10,7 @@ async fn main() {
         authors: "".into(),
         homepage: env!("CARGO_PKG_REPOSITORY").into(),
     });
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("emdrive=info"))
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("emdrive=debug"))
         .init();
     info!("🔢 Starting Emdrive...");
     let instance = Instance::new();
