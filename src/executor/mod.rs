@@ -4,9 +4,11 @@ use crate::constructs::TableDefinition;
 use crate::{
     constructs::{DataInstance, DataInstanceRaw},
     sql::Statement,
-    storage::Row,
+    storage::{NamedRow, Row},
 };
 use log::debug;
+use serde::ser::SerializeSeq;
+use serde::Serialize;
 use tokio::sync::{mpsc, oneshot};
 
 const MAX_IN_FLIGHT_REQUESTS: usize = 100;
@@ -15,6 +17,19 @@ const MAX_IN_FLIGHT_REQUESTS: usize = 100;
 pub struct QueryResult {
     pub column_names: Vec<String>,
     pub rows: Vec<Row>,
+}
+
+impl Serialize for QueryResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut seq = serializer.serialize_seq(Some(self.rows.len()))?;
+        for row in &self.rows {
+            seq.serialize_element(&NamedRow(&self.column_names, &row.0))?;
+        }
+        seq.end()
+    }
 }
 
 pub type ExecutorPayload = (Statement, oneshot::Sender<QueryResult>);
@@ -42,7 +57,7 @@ impl Executor {
         let mut rx = self
             .rx
             .take()
-            .expect("executor.prepare_channel() must be ran before executor.start()");
+            .expect("`prepare_channel` must be ran before `start`");
         while let Some(payload) = rx.recv().await {
             let (statement, tx) = payload;
             debug!("☄️ Executing statement: {:?}", statement);

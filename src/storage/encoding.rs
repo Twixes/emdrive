@@ -1,3 +1,4 @@
+use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::{
     convert::{From, TryFrom},
     fmt::Debug,
@@ -266,6 +267,22 @@ impl<'b> EncodableWithAssumption<'b> for DataInstance {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Row(pub Vec<DataInstance>);
+
+#[derive(Debug)]
+pub struct NamedRow<'a>(pub &'a Vec<String>, pub &'a Vec<DataInstance>);
+
+impl Serialize for NamedRow<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_map(Some(self.0.len()))?;
+        for (name, value) in self.0.iter().zip(self.1.iter()) {
+            state.serialize_entry(name, value)?;
+        }
+        state.end()
+    }
+}
 
 impl Encodable for Row {
     fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {

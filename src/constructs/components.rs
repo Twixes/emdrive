@@ -1,3 +1,4 @@
+use serde::{Serialize, Serializer};
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -41,7 +42,8 @@ impl FromStr for DataTypeRaw {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
 pub enum DataInstanceRaw {
     UInt8(u8),
     UInt16(u16),
@@ -54,7 +56,8 @@ pub enum DataInstanceRaw {
     String(String),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize)]
+#[serde(untagged)]
 pub enum DataInstance {
     Direct(DataInstanceRaw),
     Nullable(DataInstanceRaw),

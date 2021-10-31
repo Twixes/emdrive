@@ -27,7 +27,9 @@ async fn echo(
             let (resp_tx, resp_rx) = oneshot::channel::<QueryResult>();
             executor_tx.send((statement, resp_tx)).await.unwrap();
             let query_result = resp_rx.await;
-            Ok(Response::new(Body::from(query)))
+            Ok(Response::new(Body::from(
+                serde_json::to_string_pretty(&query_result.unwrap()).unwrap(),
+            )))
         }
         ("/", &Method::GET) => {
             // Read-only

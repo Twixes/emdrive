@@ -3,4 +3,4 @@ mod index;
 mod paging;
 mod system;
 
-pub use encoding::Row;
+pub use encoding::{NamedRow, Row};
