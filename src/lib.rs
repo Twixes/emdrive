@@ -1,8 +1,8 @@
 pub mod config;
-mod construct;
-mod query;
-pub mod serve;
-pub mod store;
+mod constructs;
+pub mod server;
+mod sql;
+pub mod storage;
 
 pub use config::Config;
 use log::*;
@@ -20,6 +20,6 @@ impl Instance {
 
     pub async fn start(&self) {
         info!("⚙️ Launch configuration:\n{}", &self.config);
-        serve::start_server(&self.config).await;
+        server::start_server(&self.config).await;
     }
 }

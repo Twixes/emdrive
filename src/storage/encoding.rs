@@ -4,7 +4,7 @@ use std::{
     mem, str,
 };
 
-use crate::construct::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
+use crate::constructs::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
 
 // Important note: all data stored on disk by Emdrive is big-endian. Use `from_be_bytes` and `to_be_bytes` methods.
 

@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::construct::components::DataTypeRaw;
+use crate::constructs::components::DataTypeRaw;
 use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]

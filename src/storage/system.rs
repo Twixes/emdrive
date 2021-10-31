@@ -1,4 +1,4 @@
-use crate::construct::components::{ColumnDefinition, DataType, DataTypeRaw, TableDefinition};
+use crate::constructs::components::{ColumnDefinition, DataType, DataTypeRaw, TableDefinition};
 
 pub const SYSTEM_SCHEMA_NAME: &str = "system";
 

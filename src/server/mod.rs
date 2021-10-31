@@ -1,5 +1,5 @@
 use crate::config;
-use crate::query::parse_statement;
+use crate::sql::parse_statement;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use log::*;
