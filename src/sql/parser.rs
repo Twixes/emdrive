@@ -64,7 +64,7 @@ pub enum Statement {
 }
 
 impl Validatable for Statement {
-    fn validate(&self) -> Result<(), StatementValidationError> {
+    fn validate(&self) -> Result<(), ValidationError> {
         match self {
             Statement::CreateTable(create_table) => create_table.validate(),
             Statement::Insert(insert) => insert.validate(),

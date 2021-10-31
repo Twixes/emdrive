@@ -1,4 +1,4 @@
-use crate::sql::StatementValidationError;
+use crate::sql::ValidationError;
 
 use super::components::*;
 
@@ -9,7 +9,7 @@ pub struct CreateTableStatement {
 }
 
 impl Validatable for CreateTableStatement {
-    fn validate(&self) -> Result<(), StatementValidationError> {
+    fn validate(&self) -> Result<(), ValidationError> {
         self.table.validate()
     }
 }
@@ -22,7 +22,7 @@ pub struct InsertStatement {
 }
 
 impl Validatable for InsertStatement {
-    fn validate(&self) -> Result<(), StatementValidationError> {
+    fn validate(&self) -> Result<(), ValidationError> {
         Ok(()) // TODO: Add checks
     }
 }

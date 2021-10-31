@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::{collections::HashSet, str::FromStr};
 
-use crate::sql::StatementValidationError;
+use crate::sql::ValidationError;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DataTypeRaw {
@@ -68,7 +68,7 @@ pub enum DataInstance {
 
 pub trait Validatable {
     /// Make sure that this definition (self) actually makes sense.
-    fn validate(&self) -> Result<(), StatementValidationError>;
+    fn validate(&self) -> Result<(), ValidationError>;
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -79,9 +79,9 @@ pub struct ColumnDefinition {
 }
 
 impl Validatable for ColumnDefinition {
-    fn validate(&self) -> Result<(), StatementValidationError> {
+    fn validate(&self) -> Result<(), ValidationError> {
         if self.name.is_empty() {
-            return Err(StatementValidationError("A column must have a name".into()));
+            return Err(ValidationError("A column must have a name".into()));
         }
         Ok(())
     }
@@ -109,12 +109,12 @@ impl TableDefinition {
 }
 
 impl Validatable for TableDefinition {
-    fn validate(&self) -> Result<(), StatementValidationError> {
+    fn validate(&self) -> Result<(), ValidationError> {
         if self.name.is_empty() {
-            return Err(StatementValidationError("A table must have a name".into()));
+            return Err(ValidationError("A table must have a name".into()));
         }
         if self.columns.is_empty() {
-            return Err(StatementValidationError(
+            return Err(ValidationError(
                 "A table must have at least one column".into(),
             ));
         }
@@ -122,7 +122,7 @@ impl Validatable for TableDefinition {
         let mut column_names: HashSet<String> = HashSet::new();
         for (column_index, column) in self.columns.iter().enumerate() {
             if column_names.contains(&column.name) {
-                return Err(StatementValidationError(format!(
+                return Err(ValidationError(format!(
                     "There is more than one column with name `{}` in table definition",
                     column.name
                 )));
@@ -132,7 +132,7 @@ impl Validatable for TableDefinition {
                 primary_key_count += 1;
             }
             if let Err(column_error) = column.validate() {
-                return Err(StatementValidationError(format!(
+                return Err(ValidationError(format!(
                     "Problem at column {}: {}",
                     column_index + 1,
                     column_error
@@ -140,7 +140,7 @@ impl Validatable for TableDefinition {
             }
         }
         if primary_key_count != 1 {
-            return Err(StatementValidationError(format!(
+            return Err(ValidationError(format!(
                 "A table must have exactly 1 PRIMARY KEY column, not {}",
                 primary_key_count
             )));

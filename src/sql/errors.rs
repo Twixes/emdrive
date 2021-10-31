@@ -18,16 +18,16 @@ impl Serialize for SyntaxError {
 }
 
 #[derive(Error, Debug, PartialEq)]
-#[error("StatementValidationError: {0}")]
-pub struct StatementValidationError(pub String);
+#[error("ValidationError: {0}")]
+pub struct ValidationError(pub String);
 
-impl Serialize for StatementValidationError {
+impl Serialize for ValidationError {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut map = serializer.serialize_map(Some(2))?;
-        map.serialize_entry("type", "statement_validation")?;
+        map.serialize_entry("type", "validation")?;
         map.serialize_entry("message", &self.0)?;
         map.end()
     }

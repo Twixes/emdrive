@@ -12,6 +12,57 @@ use tokio::time;
 use tracing::*;
 use ulid::Ulid;
 
+async fn process_post(
+    executor_tx: mpsc::Sender<ExecutorPayload>,
+    body: &str,
+) -> (StatusCode, String) {
+    let statement = parse_statement(&body);
+    if let Err(parsing_error) = statement {
+        return (
+            StatusCode::BAD_REQUEST,
+            serde_json::to_string(&parsing_error).unwrap(),
+        );
+    }
+    let statement = statement.unwrap();
+    if let Err(validation_error) = statement.validate() {
+        return (
+            StatusCode::BAD_REQUEST,
+            serde_json::to_string(&validation_error).unwrap(),
+        );
+    }
+    let (resp_tx, resp_rx) = oneshot::channel::<QueryResult>();
+    executor_tx.send((statement, resp_tx)).await.unwrap();
+    let query_result = resp_rx.await;
+    (
+        StatusCode::OK,
+        serde_json::to_string_pretty(&query_result.unwrap()).unwrap(),
+    )
+}
+
+async fn process_get(
+    executor_tx: mpsc::Sender<ExecutorPayload>,
+    query: Option<&str>,
+) -> (StatusCode, String) {
+    if let Some(query_string) = query {
+        if let Ok(query_map) = serde_urlencoded::from_str::<HashMap<String, String>>(query_string) {
+            if let Some(query) = query_map.get("query") {
+                // Found SQL
+                (StatusCode::OK, query.to_string())
+                // TODO: Add statement handling
+            } else {
+                // No query param
+                (StatusCode::BAD_REQUEST, "X: No query param".to_string())
+            }
+        } else {
+            // Bad query string
+            (StatusCode::BAD_REQUEST, "X: Bad query string".to_string())
+        }
+    } else {
+        // No query string
+        (StatusCode::BAD_REQUEST, "X: No query string".to_string())
+    }
+}
+
 async fn echo(
     executor_tx: mpsc::Sender<ExecutorPayload>,
     req: Request<Body>,
@@ -19,73 +70,28 @@ async fn echo(
     let timer = time::Instant::now();
     let request_id = Ulid::new();
     debug!("⚡️ Received request ID {}", request_id);
-    let mut response_builder = Response::builder();
-    let response_headers = response_builder.headers_mut().unwrap();
-    response_headers.insert("Content-Type", HeaderValue::from_static("application/json"));
+    let mut response_builder = Response::builder().header("Content-Type", "application/json");
     let result = match (req.uri().path(), req.method()) {
         ("/", &Method::POST) => {
             // Read-write
             let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
-            let query = String::from_utf8(body_bytes.into_iter().collect()).unwrap();
+            let body = String::from_utf8(body_bytes.into_iter().collect()).unwrap();
             // Found SQL
-            let statement = parse_statement(&query);
-            if let Err(parsing_error) = statement {
-                return Ok(response_builder
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(Body::from(serde_json::to_string(&parsing_error).unwrap()))
-                    .unwrap());
-            }
-            let statement = statement.unwrap();
-            if let Err(validation_error) = statement.validate() {
-                return Ok(response_builder
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(Body::from(
-                        serde_json::to_string(&validation_error).unwrap(),
-                    ))
-                    .unwrap());
-            }
-            let (resp_tx, resp_rx) = oneshot::channel::<QueryResult>();
-            executor_tx.send((statement, resp_tx)).await.unwrap();
-            let query_result = resp_rx.await;
+            let (status_code, response_string) = process_post(executor_tx, &body).await;
             Ok(response_builder
-                .body(Body::from(
-                    serde_json::to_string_pretty(&query_result.unwrap()).unwrap(),
-                ))
+                .header("Content-Type", "application/json")
+                .status(status_code)
+                .body(Body::from(response_string))
                 .unwrap())
         }
         ("/", &Method::GET) => {
             // Read-only
-            if let Some(query_string) = req.uri().query() {
-                if let Ok(query_map) =
-                    serde_urlencoded::from_str::<HashMap<String, String>>(query_string)
-                {
-                    if let Some(query) = query_map.get("query") {
-                        // Found SQL
-                        Ok(response_builder
-                            .body(Body::from(query.to_string()))
-                            .unwrap())
-                        // TODO: Add statement handling
-                    } else {
-                        // No query param
-                        Ok(response_builder
-                            .status(StatusCode::BAD_REQUEST)
-                            .body(Body::default())
-                            .unwrap())
-                    }
-                } else {
-                    // Bad query string
-                    Ok(response_builder
-                        .status(StatusCode::BAD_REQUEST)
-                        .body(Body::default())
-                        .unwrap())
-                }
-            } else {
-                // No query string
-                Ok(response_builder
-                    .status(StatusCode::BAD_REQUEST)
-                    .body(Body::default())
-                    .unwrap())
-            }
+            let query = req.uri().query();
+            let (status_code, response_string) = process_get(executor_tx, query).await;
+            Ok(response_builder
+                .status(status_code)
+                .body(Body::from(response_string))
+                .unwrap())
         }
         ("/", _) => Ok(response_builder
             .status(StatusCode::METHOD_NOT_ALLOWED)
