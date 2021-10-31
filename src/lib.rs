@@ -13,7 +13,7 @@ pub struct Instance {
 }
 
 impl Instance {
-    pub fn new() -> Self {
+    pub fn preload() -> Self {
         Instance {
             config: Config::from_env(),
         }

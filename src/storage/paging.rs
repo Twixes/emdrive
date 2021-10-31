@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use crate::constructs::components::{DataInstance, DataInstanceRaw, TableDefinition};
+use crate::constructs::components::{DataInstanceRaw, TableDefinition};
 
 use super::encoding::*;
 

@@ -17,7 +17,7 @@ fn main() {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     info!("🔢 Starting Emdrive...");
-    let instance = Instance::new();
+    let instance = Instance::preload();
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(instance.run());
     info!("🛑 Emdrive shut down");

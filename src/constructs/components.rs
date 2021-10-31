@@ -1,4 +1,4 @@
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use std::{collections::HashSet, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

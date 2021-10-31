@@ -7,8 +7,7 @@ use crate::{
     sql::Statement,
     storage::{NamedRow, Row},
 };
-use serde::ser::SerializeSeq;
-use serde::Serialize;
+use serde::{ser::SerializeSeq, Serialize, Serializer};
 use tokio::sync::{mpsc, oneshot};
 use tracing::debug;
 
@@ -23,7 +22,7 @@ pub struct QueryResult {
 impl Serialize for QueryResult {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::Serializer,
+        S: Serializer,
     {
         let mut seq = serializer.serialize_seq(Some(self.rows.len()))?;
         for row in &self.rows {
