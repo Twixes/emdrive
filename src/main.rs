@@ -2,8 +2,7 @@ use emdrive::Instance;
 use human_panic::setup_panic;
 use log::*;
 
-#[tokio::main]
-async fn main() {
+fn main() {
     setup_panic!(Metadata {
         name: "Emdrive".into(),
         version: env!("CARGO_PKG_VERSION").into(),
@@ -14,5 +13,7 @@ async fn main() {
         .init();
     info!("🔢 Starting Emdrive...");
     let instance = Instance::new();
-    instance.start().await;
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    runtime.block_on(instance.start());
+    info!("🛑 Emdrive shut down");
 }
