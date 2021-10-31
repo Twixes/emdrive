@@ -103,9 +103,11 @@ pub async fn start_server(config: &config::Config, executor_tx: mpsc::Sender<Exe
         }))
         .with_graceful_shutdown(shutdown_signal());
 
-    info!("👂 Listening on {}...", tcp_listen_address);
+    info!("👂 Server listening on {}...", tcp_listen_address);
 
     if let Err(e) = server.await {
-        error!("🛑 Encountered server error: {}", e);
-    };
+        error!("‼️ Encountered server error: {}", e);
+    } else {
+        debug!("⏹ Server no longer listening");
+    }
 }
