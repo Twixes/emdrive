@@ -1,7 +1,7 @@
 use std::{env, fmt, str};
 
 /// DBMS configuration.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Config {
     /// Path to database state, i.e. saved data. Conventionally `emdrive/` in `/var/lib/`.
     pub data_directory: String,

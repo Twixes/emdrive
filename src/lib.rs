@@ -1,5 +1,6 @@
 pub mod config;
 mod constructs;
+mod executor;
 pub mod server;
 mod sql;
 pub mod storage;
@@ -20,6 +21,12 @@ impl Instance {
 
     pub async fn start(&self) {
         info!("⚙️ Launch configuration:\n{}", &self.config);
-        server::start_server(&self.config).await;
+        let mut executor = executor::Executor::new();
+        let executor_tx = executor.prepare_channel();
+
+        tokio::join!(
+            tokio::spawn(async move { executor.run().await }),
+            server::start_server(&self.config, executor_tx),
+        );
     }
 }
