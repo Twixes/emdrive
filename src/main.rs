@@ -19,6 +19,6 @@ fn main() {
     info!("🔢 Starting Emdrive...");
     let instance = Instance::new();
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(instance.start());
+    runtime.block_on(instance.run());
     info!("🛑 Emdrive shut down");
 }

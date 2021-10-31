@@ -19,16 +19,16 @@ impl Instance {
         }
     }
 
-    pub async fn start(&self) {
+    pub async fn run(&self) {
         info!("⚙️ Launch configuration:\n{}", &self.config);
         let mut executor = executor::Executor::new();
         let executor_tx = executor.prepare_channel();
-
-        tokio::join!(
+        let (executor_join_result, _) = tokio::join!(
             tokio::spawn(async move {
                 executor.start().await;
             }),
             server::start_server(&self.config, executor_tx),
         );
+        executor_join_result.expect("Failed to join executor");
     }
 }
