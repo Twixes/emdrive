@@ -1,11 +1,11 @@
 use crate::config::Config;
-use log::*;
 use std::{
     convert::TryInto,
     fs,
     io::{self, Write},
     mem, path, process,
 };
+use tracing::*;
 
 // Massively work-in-progress!
 

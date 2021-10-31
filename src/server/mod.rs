@@ -3,11 +3,11 @@ use crate::executor::{ExecutorPayload, QueryResult};
 use crate::sql::parse_statement;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
-use log::*;
 use std::collections::HashMap;
 use std::{convert, net, str::FromStr};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time;
+use tracing::*;
 use ulid::Ulid;
 
 async fn echo(

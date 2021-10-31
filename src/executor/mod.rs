@@ -6,10 +6,10 @@ use crate::{
     sql::Statement,
     storage::{NamedRow, Row},
 };
-use log::debug;
 use serde::ser::SerializeSeq;
 use serde::Serialize;
 use tokio::sync::{mpsc, oneshot};
+use tracing::debug;
 
 const MAX_IN_FLIGHT_REQUESTS: usize = 100;
 

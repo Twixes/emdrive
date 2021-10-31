@@ -6,7 +6,7 @@ mod sql;
 pub mod storage;
 
 pub use config::Config;
-use log::*;
+use tracing::*;
 
 pub struct Instance {
     config: Config,
