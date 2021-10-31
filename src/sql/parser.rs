@@ -1,6 +1,7 @@
 use super::expects::*;
 use super::tokenizer::*;
 use crate::constructs::statements::{CreateTableStatement, InsertStatement};
+use crate::constructs::Validatable;
 use crate::sql::errors::*;
 
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
@@ -60,6 +61,15 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
 pub enum Statement {
     CreateTable(CreateTableStatement),
     Insert(InsertStatement),
+}
+
+impl Validatable for Statement {
+    fn validate(&self) -> Result<(), StatementValidationError> {
+        match self {
+            Statement::CreateTable(create_table) => create_table.validate(),
+            Statement::Insert(insert) => insert.validate(),
+        }
+    }
 }
 
 #[cfg(test)]

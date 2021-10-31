@@ -157,9 +157,7 @@ impl<'b> EncodableWithAssumption<'b> for Page {
                 for _ in 0..(arity as usize - 1) {
                     let (primary_key, iteration_rest) = DataInstanceRaw::try_decode_assume(
                         rest,
-                        assumption.columns[assumption.primary_key_index]
-                            .data_type
-                            .raw_type,
+                        assumption.get_primary_key().data_type.raw_type,
                     )?;
                     rest = iteration_rest;
                     primary_keys.push(primary_key);

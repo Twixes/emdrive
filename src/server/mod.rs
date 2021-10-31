@@ -1,6 +1,8 @@
 use crate::config;
+use crate::constructs::Validatable;
 use crate::executor::{ExecutorPayload, QueryResult};
 use crate::sql::parse_statement;
+use hyper::header::HeaderValue;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
@@ -17,19 +19,39 @@ async fn echo(
     let timer = time::Instant::now();
     let request_id = Ulid::new();
     debug!("⚡️ Received request ID {}", request_id);
+    let mut response_builder = Response::builder();
+    let response_headers = response_builder.headers_mut().unwrap();
+    response_headers.insert("Content-Type", HeaderValue::from_static("application/json"));
     let result = match (req.uri().path(), req.method()) {
         ("/", &Method::POST) => {
             // Read-write
             let body_bytes = hyper::body::to_bytes(req.into_body()).await?;
             let query = String::from_utf8(body_bytes.into_iter().collect()).unwrap();
             // Found SQL
-            let statement = parse_statement(&query).unwrap();
+            let statement = parse_statement(&query);
+            if let Err(parsing_error) = statement {
+                return Ok(response_builder
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from(serde_json::to_string(&parsing_error).unwrap()))
+                    .unwrap());
+            }
+            let statement = statement.unwrap();
+            if let Err(validation_error) = statement.validate() {
+                return Ok(response_builder
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Body::from(
+                        serde_json::to_string(&validation_error).unwrap(),
+                    ))
+                    .unwrap());
+            }
             let (resp_tx, resp_rx) = oneshot::channel::<QueryResult>();
             executor_tx.send((statement, resp_tx)).await.unwrap();
             let query_result = resp_rx.await;
-            Ok(Response::new(Body::from(
-                serde_json::to_string_pretty(&query_result.unwrap()).unwrap(),
-            )))
+            Ok(response_builder
+                .body(Body::from(
+                    serde_json::to_string_pretty(&query_result.unwrap()).unwrap(),
+                ))
+                .unwrap())
         }
         ("/", &Method::GET) => {
             // Read-only
@@ -39,35 +61,37 @@ async fn echo(
                 {
                     if let Some(query) = query_map.get("query") {
                         // Found SQL
-                        Ok(Response::new(Body::from(query.to_string())))
+                        Ok(response_builder
+                            .body(Body::from(query.to_string()))
+                            .unwrap())
                         // TODO: Add statement handling
                     } else {
                         // No query param
-                        Ok(Response::builder()
+                        Ok(response_builder
                             .status(StatusCode::BAD_REQUEST)
                             .body(Body::default())
                             .unwrap())
                     }
                 } else {
                     // Bad query string
-                    Ok(Response::builder()
+                    Ok(response_builder
                         .status(StatusCode::BAD_REQUEST)
                         .body(Body::default())
                         .unwrap())
                 }
             } else {
                 // No query string
-                Ok(Response::builder()
+                Ok(response_builder
                     .status(StatusCode::BAD_REQUEST)
                     .body(Body::default())
                     .unwrap())
             }
         }
-        ("/", _) => Ok(Response::builder()
+        ("/", _) => Ok(response_builder
             .status(StatusCode::METHOD_NOT_ALLOWED)
             .body(Body::default())
             .unwrap()),
-        _ => Ok(Response::builder()
+        _ => Ok(response_builder
             .status(StatusCode::NOT_FOUND)
             .body(Body::default())
             .unwrap()),
