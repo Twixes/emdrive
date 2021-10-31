@@ -84,7 +84,7 @@ async fn shutdown_signal() {
     tokio::signal::ctrl_c()
         .await
         .expect("Failed to install Ctrl+C signal handler");
-    info!("💤 Shutting down gracefully");
+    info!("💤 Shutting down gracefully...");
 }
 
 /// Start server loop.

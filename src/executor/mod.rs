@@ -58,9 +58,10 @@ impl Executor {
             .rx
             .take()
             .expect("`prepare_channel` must be ran before `start`");
+        debug!("🗡 Executor engaged");
         while let Some(payload) = rx.recv().await {
             let (statement, tx) = payload;
-            debug!("☄️ Executing statement: {:?}", statement);
+            debug!("➡️ Executing statement: {:?}", statement);
             // TODO: Implement real query execution
             let result = QueryResult {
                 column_names: vec!["id".to_string()],
@@ -68,5 +69,6 @@ impl Executor {
             };
             tx.send(result).unwrap();
         }
+        debug!("🎗 Executor disengaged");
     }
 }
