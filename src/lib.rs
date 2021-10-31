@@ -25,7 +25,9 @@ impl Instance {
         let executor_tx = executor.prepare_channel();
 
         tokio::join!(
-            tokio::spawn(async move { executor.run().await }),
+            tokio::spawn(async move {
+                executor.start().await;
+            }),
             server::start_server(&self.config, executor_tx),
         );
     }

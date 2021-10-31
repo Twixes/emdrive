@@ -38,14 +38,12 @@ impl Executor {
         tx
     }
 
-    pub async fn run(&mut self) {
-        while let Some(payload) = self
+    pub async fn start(&mut self) {
+        let mut rx = self
             .rx
             .take()
-            .expect("executor.prepare_channel() must be ran before executor.run()")
-            .recv()
-            .await
-        {
+            .expect("executor.prepare_channel() must be ran before executor.start()");
+        while let Some(payload) = rx.recv().await {
             let (statement, tx) = payload;
             debug!("☄️ Executing statement: {:?}", statement);
             // TODO: Implement real query execution
