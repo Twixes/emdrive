@@ -1,6 +1,7 @@
-mod encoding;
+pub mod encoding;
+pub mod filesystem;
 mod index;
-mod paging;
-mod system;
+pub mod paging;
+pub mod system;
 
 pub use encoding::{NamedRow, Row};

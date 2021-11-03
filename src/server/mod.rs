@@ -2,7 +2,6 @@ use crate::config;
 use crate::constructs::Validatable;
 use crate::executor::{ExecutorPayload, QueryResult};
 use crate::sql::parse_statement;
-use hyper::header::HeaderValue;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
@@ -40,7 +39,7 @@ async fn process_post(
 }
 
 async fn process_get(
-    executor_tx: mpsc::Sender<ExecutorPayload>,
+    _executor_tx: mpsc::Sender<ExecutorPayload>,
     query: Option<&str>,
 ) -> (StatusCode, String) {
     if let Some(query_string) = query {
@@ -51,15 +50,18 @@ async fn process_get(
                 // TODO: Add statement handling
             } else {
                 // No query param
-                (StatusCode::BAD_REQUEST, "X: No query param".to_string())
+                (StatusCode::BAD_REQUEST, "TODO: No query param".to_string())
             }
         } else {
             // Bad query string
-            (StatusCode::BAD_REQUEST, "X: Bad query string".to_string())
+            (
+                StatusCode::BAD_REQUEST,
+                "TODO: Bad query string".to_string(),
+            )
         }
     } else {
         // No query string
-        (StatusCode::BAD_REQUEST, "X: No query string".to_string())
+        (StatusCode::BAD_REQUEST, "TODO: No query string".to_string())
     }
 }
 

@@ -6,6 +6,7 @@ mod sql;
 pub mod storage;
 
 pub use config::Config;
+use std::io;
 use tracing::*;
 
 pub struct Instance {
@@ -19,9 +20,9 @@ impl Instance {
         }
     }
 
-    pub async fn run(&self) {
+    pub async fn run(&self) -> Result<(), io::Error> {
         info!("⚙️ Launch configuration:\n{}", &self.config);
-        let mut executor = executor::Executor::new();
+        let mut executor = executor::Executor::new(&self.config);
         let executor_tx = executor.prepare_channel();
         let (executor_join_result, _) = tokio::join!(
             tokio::spawn(async move {
@@ -30,5 +31,6 @@ impl Instance {
             server::start_server(&self.config, executor_tx),
         );
         executor_join_result.expect("Failed to join executor");
+        Ok(())
     }
 }

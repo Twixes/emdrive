@@ -81,11 +81,9 @@ It's a match! The image we saved previously has a similar hash, and we can now s
 
 ```bash
 $EMDRIVE_DATA_DIRECTORY # /var/lib/emdrive/data by default
-└── databases/
    └── gaggle/ # database
-      └── tables/
-         └── photos_seen/ # table
-            └── data # core table data
+      └── photos_seen/ # table
+         └── 0 # core table data
 ```
 
 Every table has a `data` file containing all its, well, data. Such `data` files are made up of pages.
