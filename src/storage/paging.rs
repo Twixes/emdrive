@@ -5,7 +5,7 @@ use crate::constructs::components::{DataInstanceRaw, TableDefinition};
 use super::encoding::*;
 
 /// Each page is 8 KiB long.
-const PAGE_SIZE: usize = 8 * 1024;
+pub const PAGE_SIZE: usize = 8 * 1024;
 
 /// Latest version of disk data layout. Useful for determining layout compatibility.
 const LATEST_LAYOUT_VERSION: u8 = 0;
@@ -36,8 +36,8 @@ pub fn construct_blank_table() -> WriteBlob {
 }
 
 /// Possible core page types.
-#[derive(Debug, PartialEq, Eq)]
-enum Page {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Page {
     /// The initial page containing directions for the whole `data` file.
     Meta {
         /// Version of disk data layout that is in use.

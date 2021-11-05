@@ -265,7 +265,7 @@ impl<'b> EncodableWithAssumption<'b> for DataInstance {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Row(pub Vec<DataInstance>);
 
 #[derive(Debug)]

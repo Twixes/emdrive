@@ -44,7 +44,7 @@ impl FromStr for DataTypeRaw {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(untagged)]
 pub enum DataInstanceRaw {
     UInt8(u8),
@@ -58,7 +58,7 @@ pub enum DataInstanceRaw {
     String(String),
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 #[serde(untagged)]
 pub enum DataInstance {
     Direct(DataInstanceRaw),
