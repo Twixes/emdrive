@@ -46,6 +46,34 @@ pub struct Executor {
     rx: Option<mpsc::Receiver<ExecutorPayload>>,
 }
 
+async fn ensure_table_file_exists(
+    config: &config::Config,
+    table_definition: &TableDefinition,
+) -> io::Result<()> {
+    if !does_table_file_exist(&config, SYSTEM_SCHEMA_NAME, &table_definition.name).await {
+        let blank_table_blob = construct_blank_table();
+        match write_table_file(
+            &config,
+            SYSTEM_SCHEMA_NAME,
+            &table_definition.name,
+            blank_table_blob,
+        )
+        .await
+        {
+            Ok(_) => debug!("Initialized system table `{}`", table_definition.name),
+            Err(error) => {
+                trace!(
+                    "Failed to initialize system table `{}`: {}",
+                    table_definition.name,
+                    error
+                );
+                return Err(error);
+            }
+        }
+    }
+    Ok(())
+}
+
 impl Executor {
     pub fn new(config: &config::Config) -> Self {
         Executor {
@@ -64,29 +92,7 @@ impl Executor {
     pub async fn bootstrap(&mut self) -> Result<(), io::Error> {
         for table in SystemTable::ALL {
             let table_definition = table.get_definition();
-            if !does_table_file_exist(&self.config, SYSTEM_SCHEMA_NAME, &table_definition.name)
-                .await
-            {
-                let blank_table_blob = construct_blank_table();
-                match write_table_file(
-                    &self.config,
-                    SYSTEM_SCHEMA_NAME,
-                    &table_definition.name,
-                    blank_table_blob,
-                )
-                .await
-                {
-                    Ok(_) => debug!("Initialized system table `{}`", table_definition.name),
-                    Err(error) => {
-                        trace!(
-                            "Failed to initialize system table `{}`: {}",
-                            table_definition.name,
-                            error
-                        );
-                        return Err(error);
-                    }
-                }
-            }
+            ensure_table_file_exists(&self.config, &table_definition).await?;
         }
         Ok(())
     }
