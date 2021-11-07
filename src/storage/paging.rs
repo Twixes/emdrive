@@ -128,7 +128,7 @@ impl From<Page> for WriteBlob {
 }
 
 impl<'b> EncodableWithAssumption<'b> for Page {
-    type Assumption = TableDefinition;
+    type Assumption = &'b TableDefinition;
 
     fn try_decode_assume(
         blob: ReadBlob<'b>,
@@ -222,9 +222,9 @@ mod core_serialization_tests {
     #[test]
     fn blank_table_de_serialization_works() {
         let blank_table_blob: WriteBlob = construct_blank_table();
+        let tables_definition = SystemTable::Tables.get_definition();
         let (page_0, rest) =
-            Page::try_decode_assume(&blank_table_blob, SystemTable::Tables.get_definition())
-                .unwrap();
+            Page::try_decode_assume(&blank_table_blob, &tables_definition).unwrap();
         assert_eq!(
             page_0,
             Page::Meta {
@@ -232,8 +232,7 @@ mod core_serialization_tests {
                 b_tree_root_page_index: 1
             }
         );
-        let (page_1, _rest) =
-            Page::try_decode_assume(rest, SystemTable::Tables.get_definition()).unwrap();
+        let (page_1, _rest) = Page::try_decode_assume(rest, &tables_definition).unwrap();
         assert_eq!(
             page_1,
             Page::BTreeLeaf {
@@ -251,7 +250,7 @@ mod core_serialization_tests {
         }
         .into();
         let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
@@ -272,7 +271,7 @@ mod core_serialization_tests {
         }
         .into();
         let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
@@ -306,7 +305,7 @@ mod core_serialization_tests {
         }
         .into();
         let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
@@ -337,7 +336,7 @@ mod core_serialization_tests {
         }
         .into();
         let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeNode {

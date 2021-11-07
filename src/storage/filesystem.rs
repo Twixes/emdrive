@@ -1,6 +1,7 @@
-use super::encoding::WriteBlob;
-use super::paging::PAGE_SIZE;
+use super::encoding::{EncodableWithAssumption, WriteBlob};
+use super::paging::{Page, PAGE_SIZE};
 use crate::config;
+use crate::constructs::TableDefinition;
 use crate::storage::encoding::PageIndex;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
@@ -37,7 +38,7 @@ pub async fn write_table_file(
     fs::write(file_path, data).await
 }
 
-pub async fn read_seek_page(
+pub async fn seek_read_page(
     config: &config::Config,
     schema: &str,
     table_name: &str,
@@ -52,7 +53,20 @@ pub async fn read_seek_page(
     Ok(buffer)
 }
 
-pub async fn write_seek_page(
+pub async fn seek_read_decode_page(
+    config: &config::Config,
+    schema: &str,
+    table_definition: &TableDefinition,
+    page_index: PageIndex,
+) -> Result<Page, String> {
+    let buffer = seek_read_page(config, schema, &table_definition.name, page_index)
+        .await
+        .unwrap();
+    let (page, _rest) = Page::try_decode_assume(&buffer, table_definition)?;
+    Ok(page)
+}
+
+pub async fn seek_write_page(
     config: &config::Config,
     schema: &str,
     table_name: &str,
@@ -76,12 +90,7 @@ mod filesystem_tests {
     use super::*;
     use crate::{
         constructs::{DataInstance, DataInstanceRaw},
-        storage::{
-            encoding::EncodableWithAssumption,
-            paging::{construct_blank_table, Page},
-            system::SystemTable,
-            Row,
-        },
+        storage::{paging::construct_blank_table, system::SystemTable, Row},
     };
     use pretty_assertions::assert_eq;
     use rand::distributions::Alphanumeric;
@@ -103,7 +112,7 @@ mod filesystem_tests {
         write_table_file(&config, schema, &table_name, data.clone())
             .await
             .unwrap();
-        let read_data = read_seek_page(&config, schema, &table_name, 0)
+        let read_data = seek_read_page(&config, schema, &table_name, 0)
             .await
             .unwrap();
         assert_eq!(data, read_data);
@@ -125,11 +134,11 @@ mod filesystem_tests {
         write_table_file(&config, schema, &table_name, data)
             .await
             .unwrap();
-        let read_data_0 = read_seek_page(&config, schema, &table_name, 0)
+        let read_data_0 = seek_read_page(&config, schema, &table_name, 0)
             .await
             .unwrap();
         let (page_0, _rest) =
-            Page::try_decode_assume(&read_data_0, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&read_data_0, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             page_0,
             Page::Meta {
@@ -137,11 +146,11 @@ mod filesystem_tests {
                 b_tree_root_page_index: 1
             }
         );
-        let read_data_1 = read_seek_page(&config, schema, &table_name, 1)
+        let read_data_1 = seek_read_page(&config, schema, &table_name, 1)
             .await
             .unwrap();
         let (page_1, _rest) =
-            Page::try_decode_assume(&read_data_1, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&read_data_1, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(
             page_1,
             Page::BTreeLeaf {
@@ -180,14 +189,14 @@ mod filesystem_tests {
                 ]),
             ],
         };
-        write_seek_page(&config, schema, &table_name, 1, page.clone().into())
+        seek_write_page(&config, schema, &table_name, 1, page.clone().into())
             .await
             .unwrap();
-        let read_data = read_seek_page(&config, schema, &table_name, 1)
+        let read_data = seek_read_page(&config, schema, &table_name, 1)
             .await
             .unwrap();
         let (decoded_page, _rest) =
-            Page::try_decode_assume(&read_data, SystemTable::Tables.get_definition()).unwrap();
+            Page::try_decode_assume(&read_data, &SystemTable::Tables.get_definition()).unwrap();
         assert_eq!(page, decoded_page);
     }
 }
