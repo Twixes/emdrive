@@ -1,4 +1,4 @@
-FROM rust:1.55-slim AS builder
+FROM rust:1.56-slim AS builder
 WORKDIR /usr/src/emdrive
 COPY . .
 RUN cargo install --path .
