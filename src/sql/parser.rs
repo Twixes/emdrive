@@ -90,7 +90,7 @@ mod tests {
         let statement = "CREATE TABLE IF NOT EXISTS test (
             id STRING PRIMARY KEY,
             server_id nullable(UINT64),
-            hash UINT128,
+            hash UINT128 DEFAULT 666,
             sent_at TIMESTAMP DEFAULT NOW()
         );";
 
@@ -127,9 +127,10 @@ mod tests {
                                 is_nullable: false
                             },
                             primary_key: false,
-                            default: /*Some(DataDefinition::Const(DataInstance::Direct(
-                                DataInstanceRaw::UInt128(666)
-                            )))*/ None,
+                            default: Some(DataDefinition::Const(DataInstance::Direct(
+                                // TODO: Infer number size from context
+                                DataInstanceRaw::UInt32(666)
+                            ))),
                         },
                         ColumnDefinition {
                             name: "sent_at".to_string(),
