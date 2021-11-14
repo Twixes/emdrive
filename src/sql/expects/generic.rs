@@ -33,6 +33,37 @@ pub fn optionalize<'t, O>(
     }
 }
 
+pub fn detect<'t, P, M>(
+    tokens: &'t [Token],
+    expect_predicate: ExpectFn<'t, P>,
+    expect_meaning: ExpectFn<'t, M>,
+) -> ExpectResult<'t, Option<M>> {
+    match expect_predicate(tokens) {
+        Ok(ExpectOk {
+            rest,
+            tokens_consumed_count: tokens_consumed_count_predicate,
+            ..
+        }) => match expect_meaning(rest) {
+            Ok(ExpectOk {
+                rest,
+                tokens_consumed_count: tokens_consumed_count_meaning,
+                outcome,
+            }) => Ok(ExpectOk {
+                rest,
+                tokens_consumed_count: tokens_consumed_count_predicate
+                    + tokens_consumed_count_meaning,
+                outcome: Some(outcome),
+            }),
+            Err(err) => Err(err),
+        },
+        Err(_) => Ok(ExpectOk {
+            rest: tokens,
+            tokens_consumed_count: 0,
+            outcome: None,
+        }),
+    }
+}
+
 pub fn expect_identity<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Vec<Token>> {
     Ok(ExpectOk {
         rest: &[][..],

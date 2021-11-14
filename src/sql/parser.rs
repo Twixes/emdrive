@@ -74,8 +74,12 @@ impl Validatable for Statement {
 
 #[cfg(test)]
 mod tests {
-    use crate::constructs::components::{
-        ColumnDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw, TableDefinition,
+    use crate::constructs::{
+        components::{
+            ColumnDefinition, DataDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
+            TableDefinition,
+        },
+        functions::Function,
     };
 
     use super::*;
@@ -87,7 +91,7 @@ mod tests {
             id STRING PRIMARY KEY,
             server_id nullable(UINT64),
             hash UINT128,
-            sent_at TIMESTAMP
+            sent_at TIMESTAMP DEFAULT NOW()
         );";
 
         let detected_statement = parse_statement(&statement).unwrap();
@@ -105,6 +109,7 @@ mod tests {
                                 is_nullable: false
                             },
                             primary_key: true,
+                            default: None,
                         },
                         ColumnDefinition {
                             name: "server_id".to_string(),
@@ -113,6 +118,7 @@ mod tests {
                                 is_nullable: true
                             },
                             primary_key: false,
+                            default: None,
                         },
                         ColumnDefinition {
                             name: "hash".to_string(),
@@ -121,6 +127,9 @@ mod tests {
                                 is_nullable: false
                             },
                             primary_key: false,
+                            default: /*Some(DataDefinition::Const(DataInstance::Direct(
+                                DataInstanceRaw::UInt128(666)
+                            )))*/ None,
                         },
                         ColumnDefinition {
                             name: "sent_at".to_string(),
@@ -129,6 +138,7 @@ mod tests {
                                 is_nullable: false
                             },
                             primary_key: false,
+                            default: Some(DataDefinition::FunctionCall(Function::Now)),
                         },
                     ]
                 ),

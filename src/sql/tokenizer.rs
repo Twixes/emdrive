@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::constructs::components::DataTypeRaw;
+use crate::constructs::{components::DataTypeRaw, functions::Function};
 use std::fmt::{self, Debug};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -63,6 +63,7 @@ pub enum Keyword {
     Metric,
     Key,
     Null,
+    Default,
 }
 
 impl fmt::Display for Keyword {
@@ -84,6 +85,7 @@ impl fmt::Display for Keyword {
                 Keyword::Metric => "METRIC",
                 Keyword::Key => "KEY",
                 Keyword::Null => "NULL",
+                Keyword::Default => "DEFAULT",
             }
         )
     }
@@ -107,6 +109,7 @@ impl FromStr for Keyword {
             "metric" => Ok(Self::Metric),
             "key" => Ok(Self::Key),
             "null" => Ok(Self::Null),
+            "default" => Ok(Self::Default),
             _ => Err(format!("`{}` does not refer to a const token", candidate)),
         }
     }
@@ -117,6 +120,7 @@ pub enum TokenValue {
     Delimiting(Delimiter),
     Const(Keyword),
     Type(DataTypeRaw),
+    Function(Function),
     String(String),
     Arbitrary(String),
 }
@@ -127,6 +131,7 @@ impl fmt::Display for TokenValue {
             Self::Delimiting(value) => fmt::Display::fmt(&value, f),
             Self::Const(value) => fmt::Display::fmt(&value, f),
             Self::Type(value) => value.fmt(f),
+            Self::Function(value) => fmt::Display::fmt(&value, f),
             Self::String(value) => write!(f, "string `\"{}\"`", value),
             Self::Arbitrary(value) => write!(f, "arbitrary `{}`", value),
         }
@@ -143,6 +148,8 @@ impl FromStr for TokenValue {
             Ok(Self::Const(keyword))
         } else if let Ok(data_type_raw) = DataTypeRaw::from_str(candidate) {
             Ok(Self::Type(data_type_raw))
+        } else if let Ok(function) = Function::from_str(candidate) {
+            Ok(Self::Function(function))
         } else {
             let mut candidate_chars = candidate.chars();
             if let (Some(Delimiter::STRING_MARKER), Some(Delimiter::STRING_MARKER)) =
@@ -249,7 +256,7 @@ mod tests {
         let statement = "CREATE TABLE IF NOT EXISTS test (
             server_id nullable(UINT64),
             hash UINT128 METRIC KEY,
-            sent_at TIMESTAMP
+            sent_at TIMESTAMP DEFAULT NOW()
         );";
 
         let detected_tokens = tokenize_statement(&statement);
@@ -336,6 +343,22 @@ mod tests {
             },
             Token {
                 value: TokenValue::Type(DataTypeRaw::Timestamp),
+                line_number: 4,
+            },
+            Token {
+                value: TokenValue::Const(Keyword::Default),
+                line_number: 4,
+            },
+            Token {
+                value: TokenValue::Function(Function::Now),
+                line_number: 4,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                line_number: 4,
+            },
+            Token {
+                value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
                 line_number: 4,
             },
             // New line

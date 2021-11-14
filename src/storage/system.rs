@@ -23,6 +23,16 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: true,
+                        default: None,
+                    },
+                    ColumnDefinition {
+                        name: "schema_name".into(),
+                        data_type: DataType {
+                            raw_type: DataTypeRaw::String,
+                            is_nullable: false,
+                        },
+                        primary_key: false,
+                        default: None,
                     },
                     ColumnDefinition {
                         name: "table_name".into(),
@@ -31,6 +41,7 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: false,
+                        default: None,
                     },
                 ],
             ),
@@ -44,6 +55,7 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: true,
+                        default: None,
                     },
                     ColumnDefinition {
                         name: "table_id".into(),
@@ -52,6 +64,7 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: false,
+                        default: None,
                     },
                     ColumnDefinition {
                         name: "raw_type".into(),
@@ -60,6 +73,7 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: false,
+                        default: None,
                     },
                     ColumnDefinition {
                         name: "is_nullable".into(),
@@ -68,6 +82,7 @@ impl SystemTable {
                             is_nullable: false,
                         },
                         primary_key: false,
+                        default: None,
                     },
                 ],
             ),

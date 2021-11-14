@@ -1,4 +1,7 @@
-use crate::constructs::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
+use crate::constructs::components::{
+    DataDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
+};
+use crate::constructs::functions::Function;
 use crate::sql::errors::*;
 use crate::sql::expects::{generic::*, ExpectOk, ExpectResult};
 use crate::sql::tokenizer::*;
@@ -116,6 +119,71 @@ pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataIns
             "Expected a value, instead found {}.",
             wrong_token
         ))),
+    }
+}
+
+pub fn expect_function_call<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Function> {
+    let ExpectOk {
+        rest,
+        tokens_consumed_count: tokens_consumed_count_call,
+        outcome: found_token,
+    } = expect_next_token(tokens, &"a function name")?;
+    match found_token {
+        Token {
+            value: TokenValue::Function(found_function),
+            ..
+        } => {
+            let ExpectOk {
+                rest,
+                tokens_consumed_count: tokens_consumed_count_parentheses,
+                outcome: _,
+            } = expect_token_values_sequence(
+                rest,
+                &[
+                    TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                ],
+            )?;
+            Ok(ExpectOk {
+                rest,
+                tokens_consumed_count: tokens_consumed_count_call
+                    + tokens_consumed_count_parentheses,
+                outcome: found_function.to_owned(),
+            })
+        }
+        wrong_token => Err(SyntaxError(format!(
+            "Expected a function name, instead found {}.",
+            wrong_token
+        ))),
+    }
+}
+
+pub fn expect_data_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataDefinition> {
+    match expect_function_call(tokens) {
+        Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: found_function,
+        }) => Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataDefinition::FunctionCall(found_function),
+        }),
+        Err(_) => match expect_data_instance(tokens) {
+            Ok(ExpectOk {
+                rest,
+                tokens_consumed_count,
+                outcome: found_data_instance,
+            }) => Ok(ExpectOk {
+                rest,
+                tokens_consumed_count,
+                outcome: DataDefinition::Const(found_data_instance),
+            }),
+            Err(_) => Err(SyntaxError(format!(
+                "Expected a const value or a function call, instead found {:?}.",
+                tokens.first()
+            ))),
+        },
     }
 }
 
@@ -343,6 +411,50 @@ mod expect_data_instance_tests {
                 tokens_consumed_count: 1,
                 outcome: DataInstance::Direct(DataInstanceRaw::UInt32(1227))
             })
+        )
+    }
+}
+
+#[cfg(test)]
+mod expect_function_call_tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn returns_ok_with_no_args() {
+        assert_eq!(
+            expect_function_call(&[
+                Token {
+                    value: TokenValue::Function(Function::Ulid),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisOpening),
+                    line_number: 1
+                },
+                Token {
+                    value: TokenValue::Delimiting(Delimiter::ParenthesisClosing),
+                    line_number: 1
+                }
+            ]),
+            Ok(ExpectOk {
+                rest: &[][..],
+                tokens_consumed_count: 3,
+                outcome: Function::Ulid
+            })
+        )
+    }
+
+    #[test]
+    fn returns_error_if_no_opening_parenthesis() {
+        assert_eq!(
+            expect_function_call(&[Token {
+                value: TokenValue::Function(Function::Ulid),
+                line_number: 1
+            }]),
+            Err(SyntaxError(
+                "Expected opening parenthesis `(`, instead found end of statement.".to_string()
+            ))
         )
     }
 }

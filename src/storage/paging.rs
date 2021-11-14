@@ -232,6 +232,7 @@ mod core_serialization_tests {
                         is_nullable: false,
                     },
                     primary_key: true,
+                    default: None,
                 },
                 ColumnDefinition {
                     name: "table_name".into(),
@@ -240,6 +241,7 @@ mod core_serialization_tests {
                         is_nullable: false,
                     },
                     primary_key: false,
+                    default: None,
                 },
             ],
         )

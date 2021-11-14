@@ -20,25 +20,32 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
         rest,
         tokens_consumed_count: tokens_consumed_count_primary_key,
         outcome: primary_key_option,
-    } = optionalize(rest, |tokens| {
-        expect_token_values_sequence(
-            tokens,
-            &[
-                TokenValue::Const(Keyword::Primary),
-                TokenValue::Const(Keyword::Key),
-            ],
-        )
-    });
+    } = detect(
+        rest,
+        |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Primary)),
+        |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Key)),
+    )?;
+    let ExpectOk {
+        rest,
+        tokens_consumed_count: tokens_consumed_count_default,
+        outcome: default,
+    } = detect(
+        rest,
+        |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Default)),
+        expect_data_definition,
+    )?;
     // TODO: Test against types like UINT16(8)
     Ok(ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_name
             + tokens_consumed_count_data_type
-            + tokens_consumed_count_primary_key,
+            + tokens_consumed_count_primary_key
+            + tokens_consumed_count_default,
         outcome: ColumnDefinition {
             name,
             data_type,
             primary_key: primary_key_option.is_some(),
+            default,
         },
     })
 }

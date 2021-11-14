@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use crate::sql::ValidationError;
 
+use super::functions::Function;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DataTypeRaw {
     UInt8,
@@ -68,6 +70,12 @@ pub enum DataInstance {
     Null,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum DataDefinition {
+    Const(DataInstance),
+    FunctionCall(Function),
+}
+
 pub trait Validatable {
     /// Make sure that this definition (self) actually makes sense.
     fn validate(&self) -> Result<(), ValidationError>;
@@ -78,6 +86,7 @@ pub struct ColumnDefinition {
     pub name: String,
     pub data_type: DataType,
     pub primary_key: bool,
+    pub default: Option<DataDefinition>,
 }
 
 impl Validatable for ColumnDefinition {
