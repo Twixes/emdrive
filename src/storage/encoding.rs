@@ -5,6 +5,7 @@ use std::{
     fmt::Debug,
     mem, str,
 };
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 // Important note: all data stored on disk by Emdrive is big-endian. Use `from_be_bytes` and `to_be_bytes` methods.
@@ -97,7 +98,7 @@ impl Encodable for u8 {
     }
 
     fn encoded_size(&self) -> usize {
-        1
+        1 // u8
     }
 }
 
@@ -112,7 +113,7 @@ impl Encodable for bool {
     }
 
     fn encoded_size(&self) -> usize {
-        1
+        1 // bool
     }
 }
 
@@ -140,6 +141,30 @@ impl Encodable for String {
     }
 }
 
+impl Encodable for OffsetDateTime {
+    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+        let (unix_timestamp_raw, rest) = i64::try_decode(blob)?;
+        match Self::from_unix_timestamp(unix_timestamp_raw) {
+            Ok(unix_timestamp) => Ok((unix_timestamp, rest)),
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
+        let advanced_position = position + self.encoded_size();
+        blob.splice(
+            position..advanced_position,
+            self.unix_timestamp().to_be_bytes(),
+        );
+        advanced_position
+    }
+
+    #[inline]
+    fn encoded_size(&self) -> usize {
+        8 // i64
+    }
+}
+
 impl Encodable for Uuid {
     fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
         const SIZE: usize = 16;
@@ -160,7 +185,7 @@ impl Encodable for Uuid {
 
     #[inline]
     fn encoded_size(&self) -> usize {
-        16
+        16 // u128
     }
 }
 
@@ -231,7 +256,7 @@ impl<'b> EncodableWithAssumption<'b> for DataInstanceRaw {
                 Ok((DataInstanceRaw::Bool(value), rest))
             }
             DataTypeRaw::Timestamp => {
-                let (value, rest) = i64::try_decode(blob)?;
+                let (value, rest) = OffsetDateTime::try_decode(blob)?;
                 Ok((DataInstanceRaw::Timestamp(value), rest))
             }
             DataTypeRaw::Uuid => {
@@ -343,5 +368,31 @@ impl<'b> EncodableWithAssumption<'b> for Row {
             blob = decode_result.1;
         }
         Ok((Self(values), blob))
+    }
+}
+
+mod encoding_tests {
+    use super::*;
+
+    #[test]
+    fn timestamp_encoding() {
+        let timestamp = OffsetDateTime::from_unix_timestamp(1_546_300_800).unwrap();
+        let mut blob: WriteBlob = vec![0; timestamp.encoded_size()];
+        let position = timestamp.encode(&mut blob, 0);
+        assert_eq!(position, timestamp.encoded_size());
+        let (decoded_timestamp, rest) = OffsetDateTime::try_decode(&blob).unwrap();
+        assert_eq!(decoded_timestamp, timestamp);
+        assert_eq!(rest.len(), 0);
+    }
+
+    #[test]
+    fn uuid_encoding() {
+        let uuid = Uuid::parse_str("f81d4fae-7dec-11d0-a765-00a0c91e6bf6").unwrap();
+        let mut blob: WriteBlob = vec![0; uuid.encoded_size()];
+        let position = uuid.encode(&mut blob, 0);
+        assert_eq!(position, uuid.encoded_size());
+        let (decoded_uuid, rest) = Uuid::try_decode(&blob).unwrap();
+        assert_eq!(decoded_uuid, uuid);
+        assert_eq!(rest.len(), 0);
     }
 }

@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::{collections::HashSet, str::FromStr};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::sql::ValidationError;
@@ -54,7 +55,7 @@ pub enum DataInstanceRaw {
     UInt64(u64),
     UInt128(u128),
     Bool(bool),
-    Timestamp(i64),
+    Timestamp(OffsetDateTime),
     Uuid(Uuid),
     String(String),
 }

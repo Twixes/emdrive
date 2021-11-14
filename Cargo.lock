@@ -146,7 +146,7 @@ dependencies = [
  "libc",
  "num-integer",
  "num-traits",
- "time",
+ "time 0.1.44",
  "wasm-bindgen",
  "winapi",
 ]
@@ -312,6 +312,7 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "thiserror",
+ "time 0.3.5",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1280,6 +1281,17 @@ dependencies = [
  "libc",
  "wasi",
  "winapi",
+]
+
+[[package]]
+name = "time"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41effe7cfa8af36f439fac33861b66b049edc6f9a32331e2312660529c1c24ad"
+dependencies = [
+ "itoa",
+ "libc",
+ "serde",
 ]
 
 [[package]]
