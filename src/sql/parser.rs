@@ -1,7 +1,7 @@
 use super::expects::*;
 use super::tokenizer::*;
+use crate::constructs::components::Validatable;
 use crate::constructs::statements::{CreateTableStatement, InsertStatement};
-use crate::constructs::Validatable;
 use crate::sql::errors::*;
 
 pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {

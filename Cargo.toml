@@ -16,8 +16,8 @@ human-panic = "1.0.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_urlencoded = "0.7.0"
 serde_json = "1.0"
-uuid = "0.8.2"
-ulid = { version = "0.4.1", features = ["uuid"] }
+uuid = { version = "0.8", features = ["serde"] }
+ulid = { version = "0.4", features = ["uuid"] }
 parking_lot = "0.11.2"
 rand = "0.8.4"
 thiserror = "1.0"

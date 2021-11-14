@@ -1,5 +1,5 @@
 use crate::config;
-use crate::constructs::Validatable;
+use crate::constructs::components::Validatable;
 use crate::executor::{ExecutorPayload, QueryResult};
 use crate::sql::parse_statement;
 use hyper::service::{make_service_fn, service_fn};

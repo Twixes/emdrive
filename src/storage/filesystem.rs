@@ -1,7 +1,7 @@
 use super::encoding::{EncodableWithAssumption, WriteBlob};
 use super::paging::{Page, PAGE_SIZE};
 use crate::config;
-use crate::constructs::TableDefinition;
+use crate::constructs::components::TableDefinition;
 use crate::storage::encoding::PageIndex;
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
@@ -89,12 +89,39 @@ pub async fn seek_write_page(
 mod filesystem_tests {
     use super::*;
     use crate::{
-        constructs::{DataInstance, DataInstanceRaw},
-        storage::{paging::construct_blank_table, system::SystemTable, Row},
+        constructs::components::{
+            ColumnDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
+        },
+        storage::{paging::construct_blank_table, Row},
     };
     use pretty_assertions::assert_eq;
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
+    use uuid::Uuid;
+
+    fn get_test_table() -> TableDefinition {
+        TableDefinition::new(
+            "tables".into(),
+            vec![
+                ColumnDefinition {
+                    name: "id".into(),
+                    data_type: DataType {
+                        raw_type: DataTypeRaw::Uuid,
+                        is_nullable: false,
+                    },
+                    primary_key: true,
+                },
+                ColumnDefinition {
+                    name: "table_name".into(),
+                    data_type: DataType {
+                        raw_type: DataTypeRaw::String,
+                        is_nullable: false,
+                    },
+                    primary_key: false,
+                },
+            ],
+        )
+    }
 
     #[tokio::test]
     async fn raw_write_read_works() {
@@ -137,8 +164,7 @@ mod filesystem_tests {
         let read_data_0 = seek_read_page(&config, schema, &table_name, 0)
             .await
             .unwrap();
-        let (page_0, _rest) =
-            Page::try_decode_assume(&read_data_0, &SystemTable::Tables.get_definition()).unwrap();
+        let (page_0, _rest) = Page::try_decode_assume(&read_data_0, &get_test_table()).unwrap();
         assert_eq!(
             page_0,
             Page::Meta {
@@ -149,8 +175,7 @@ mod filesystem_tests {
         let read_data_1 = seek_read_page(&config, schema, &table_name, 1)
             .await
             .unwrap();
-        let (page_1, _rest) =
-            Page::try_decode_assume(&read_data_1, &SystemTable::Tables.get_definition()).unwrap();
+        let (page_1, _rest) = Page::try_decode_assume(&read_data_1, &get_test_table()).unwrap();
         assert_eq!(
             page_1,
             Page::BTreeLeaf {
@@ -180,11 +205,11 @@ mod filesystem_tests {
             next_leaf_page_index: 0,
             rows: vec![
                 Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(1)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(1))),
                     DataInstance::Direct(DataInstanceRaw::String("xyz".into())),
                 ]),
                 Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(888)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(888))),
                     DataInstance::Direct(DataInstanceRaw::String("abc".into())),
                 ]),
             ],
@@ -195,8 +220,7 @@ mod filesystem_tests {
         let read_data = seek_read_page(&config, schema, &table_name, 1)
             .await
             .unwrap();
-        let (decoded_page, _rest) =
-            Page::try_decode_assume(&read_data, &SystemTable::Tables.get_definition()).unwrap();
+        let (decoded_page, _rest) = Page::try_decode_assume(&read_data, &get_test_table()).unwrap();
         assert_eq!(page, decoded_page);
     }
 }

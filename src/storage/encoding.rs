@@ -1,11 +1,11 @@
+use crate::constructs::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::{
     convert::{From, TryFrom},
     fmt::Debug,
     mem, str,
 };
-
-use crate::constructs::components::{DataInstance, DataInstanceRaw, DataType, DataTypeRaw};
+use uuid::Uuid;
 
 // Important note: all data stored on disk by Emdrive is big-endian. Use `from_be_bytes` and `to_be_bytes` methods.
 
@@ -57,13 +57,15 @@ macro_rules! encodable_number_impl {
     ($($t:ty)*) => ($(
         impl Encodable for $t {
             fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+                const SIZE: usize = mem::size_of::<$t>();
                 Ok((
                     Self::from_be_bytes(
                         unsafe {
-                            *(blob[..mem::size_of::<Self>()].as_ptr() as *const [u8; mem::size_of::<Self>()])
+                            // SAFETY: Recasting to an array is safe when blob is at least SIZE bytes long.
+                            *(blob[..SIZE].as_ptr() as *const [u8; SIZE])
                         }
                     ),
-                    &blob[mem::size_of::<Self>()..]
+                    &blob[SIZE..]
                 ))
             }
 
@@ -73,6 +75,7 @@ macro_rules! encodable_number_impl {
                 advanced_position
             }
 
+            #[inline]
             fn encoded_size(&self) -> usize {
                 mem::size_of::<Self>()
             }
@@ -131,8 +134,33 @@ impl Encodable for String {
         advanced_position
     }
 
+    #[inline]
     fn encoded_size(&self) -> usize {
         mem::size_of::<VarLen>() + self.len()
+    }
+}
+
+impl Encodable for Uuid {
+    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+        const SIZE: usize = 16;
+        Ok((
+            Self::from_bytes(unsafe {
+                // SAFETY: Recasting to an array is safe when blob is at least SIZE bytes long.
+                *(blob[..SIZE].as_ptr() as *const [u8; SIZE])
+            }),
+            &blob[SIZE..],
+        ))
+    }
+
+    fn encode(&self, blob: &mut WriteBlob, position: usize) -> usize {
+        let advanced_position = position + self.encoded_size();
+        blob.splice(position..advanced_position, self.as_bytes().to_owned());
+        advanced_position
+    }
+
+    #[inline]
+    fn encoded_size(&self) -> usize {
+        16
     }
 }
 
@@ -207,7 +235,7 @@ impl<'b> EncodableWithAssumption<'b> for DataInstanceRaw {
                 Ok((DataInstanceRaw::Timestamp(value), rest))
             }
             DataTypeRaw::Uuid => {
-                let (value, rest) = u128::try_decode(blob)?;
+                let (value, rest) = Uuid::try_decode(blob)?;
                 Ok((DataInstanceRaw::Uuid(value), rest))
             }
             DataTypeRaw::String => {

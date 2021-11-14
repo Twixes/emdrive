@@ -214,15 +214,41 @@ impl<'b> EncodableWithAssumption<'b> for Page {
 #[cfg(test)]
 mod core_serialization_tests {
     use super::*;
-    use crate::constructs::components::{DataInstance, DataInstanceRaw};
-    use crate::storage::system::SystemTable;
+    use crate::constructs::components::{
+        ColumnDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
+    };
     use pretty_assertions::assert_eq;
     use std::mem;
+    use uuid::Uuid;
+
+    fn get_test_table() -> TableDefinition {
+        TableDefinition::new(
+            "tables".into(),
+            vec![
+                ColumnDefinition {
+                    name: "id".into(),
+                    data_type: DataType {
+                        raw_type: DataTypeRaw::Uuid,
+                        is_nullable: false,
+                    },
+                    primary_key: true,
+                },
+                ColumnDefinition {
+                    name: "table_name".into(),
+                    data_type: DataType {
+                        raw_type: DataTypeRaw::String,
+                        is_nullable: false,
+                    },
+                    primary_key: false,
+                },
+            ],
+        )
+    }
 
     #[test]
     fn blank_table_de_serialization_works() {
         let blank_table_blob: WriteBlob = construct_blank_table();
-        let tables_definition = SystemTable::Tables.get_definition();
+        let tables_definition = get_test_table();
         let (page_0, rest) =
             Page::try_decode_assume(&blank_table_blob, &tables_definition).unwrap();
         assert_eq!(
@@ -249,8 +275,7 @@ mod core_serialization_tests {
             rows: Vec::new(),
         }
         .into();
-        let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
+        let (leaf_page, _rest) = Page::try_decode_assume(&leaf_blob, &get_test_table()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
@@ -265,19 +290,18 @@ mod core_serialization_tests {
         let leaf_blob: WriteBlob = Page::BTreeLeaf {
             next_leaf_page_index: 0,
             rows: vec![Row(vec![
-                DataInstance::Direct(DataInstanceRaw::Uuid(2)),
+                DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(2))),
                 DataInstance::Direct(DataInstanceRaw::String("xyz".into())),
             ])],
         }
         .into();
-        let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
+        let (leaf_page, _rest) = Page::try_decode_assume(&leaf_blob, &get_test_table()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
                 next_leaf_page_index: 0,
                 rows: vec![Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(2)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(2))),
                     DataInstance::Direct(DataInstanceRaw::String("xyz".into()))
                 ])]
             }
@@ -290,37 +314,36 @@ mod core_serialization_tests {
             next_leaf_page_index: 99,
             rows: vec![
                 Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(9798799999999)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(9798799999999))),
                     DataInstance::Direct(DataInstanceRaw::String("Foo 🧐".into())),
                 ]),
                 Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(0)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(0))),
                     DataInstance::Direct(DataInstanceRaw::String("Здравствуйте".into())),
                 ]),
                 Row(vec![
-                    DataInstance::Direct(DataInstanceRaw::Uuid(7)),
+                    DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(7))),
                     DataInstance::Direct(DataInstanceRaw::String("".into())),
                 ]),
             ],
         }
         .into();
-        let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
+        let (leaf_page, _rest) = Page::try_decode_assume(&leaf_blob, &get_test_table()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeLeaf {
                 next_leaf_page_index: 99,
                 rows: vec![
                     Row(vec![
-                        DataInstance::Direct(DataInstanceRaw::Uuid(9798799999999)),
+                        DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(9798799999999))),
                         DataInstance::Direct(DataInstanceRaw::String("Foo 🧐".into())),
                     ]),
                     Row(vec![
-                        DataInstance::Direct(DataInstanceRaw::Uuid(0)),
+                        DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(0))),
                         DataInstance::Direct(DataInstanceRaw::String("Здравствуйте".into())),
                     ]),
                     Row(vec![
-                        DataInstance::Direct(DataInstanceRaw::Uuid(7)),
+                        DataInstance::Direct(DataInstanceRaw::Uuid(Uuid::from_u128(7))),
                         DataInstance::Direct(DataInstanceRaw::String("".into())),
                     ])
                 ],
@@ -331,16 +354,15 @@ mod core_serialization_tests {
     #[test]
     fn node_de_serialization_works() {
         let leaf_blob: WriteBlob = Page::BTreeNode {
-            primary_keys: vec![DataInstanceRaw::Uuid(123)],
+            primary_keys: vec![DataInstanceRaw::Uuid(Uuid::from_u128(123))],
             child_page_indexes: vec![3u32, 4u32],
         }
         .into();
-        let (leaf_page, _rest) =
-            Page::try_decode_assume(&leaf_blob, &SystemTable::Tables.get_definition()).unwrap();
+        let (leaf_page, _rest) = Page::try_decode_assume(&leaf_blob, &get_test_table()).unwrap();
         assert_eq!(
             leaf_page,
             Page::BTreeNode {
-                primary_keys: vec![DataInstanceRaw::Uuid(123)],
+                primary_keys: vec![DataInstanceRaw::Uuid(Uuid::from_u128(123))],
                 child_page_indexes: vec![3u32, 4u32],
             }
         );

@@ -3,14 +3,13 @@ use std::io;
 use std::sync::Arc;
 
 use crate::config;
-use crate::constructs::TableDefinition;
 use crate::storage::filesystem::{
     does_table_file_exist, seek_read_decode_page, seek_write_page, write_table_file,
 };
 use crate::storage::paging::{construct_blank_table, Page};
 use crate::storage::system::{SystemTable, SYSTEM_SCHEMA_NAME};
 use crate::{
-    constructs::{DataInstance, DataInstanceRaw},
+    constructs::components::{DataInstance, DataInstanceRaw, TableDefinition},
     sql::Statement,
     storage::{NamedRow, Row},
 };
@@ -109,7 +108,8 @@ async fn b_tree_insert(
         b_tree_root_page_index,
         b_tree_root_page.into(),
     )
-    .await;
+    .await
+    .unwrap();
     Ok(())
 }
 
