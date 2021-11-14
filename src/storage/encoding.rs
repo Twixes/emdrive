@@ -289,8 +289,8 @@ impl Encodable for DataInstance {
 
     fn encoded_size(&self) -> usize {
         match self {
-            Self::Null => mem::size_of::<Self>(),
-            Self::Nullable(value) => mem::size_of::<Self>() + value.encoded_size(),
+            Self::Null => 1, // bool
+            Self::Nullable(value) => 1 + value.encoded_size(),
             Self::Direct(value) => value.encoded_size(),
         }
     }
