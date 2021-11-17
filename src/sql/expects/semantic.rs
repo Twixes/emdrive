@@ -1,5 +1,5 @@
 use crate::constructs::components::{
-    DataDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
+    DataDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw, Expression,
 };
 use crate::constructs::functions::Function;
 use crate::sql::errors::*;
@@ -159,31 +159,105 @@ pub fn expect_function_call<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Functio
 }
 
 pub fn expect_data_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataDefinition> {
-    match expect_function_call(tokens) {
-        Ok(ExpectOk {
-            rest,
-            tokens_consumed_count,
-            outcome: found_function,
-        }) => Ok(ExpectOk {
+    if let Ok(ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: found_function,
+    }) = expect_function_call(tokens)
+    {
+        return Ok(ExpectOk {
             rest,
             tokens_consumed_count,
             outcome: DataDefinition::FunctionCall(found_function),
+        });
+    }
+    if let Ok(ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: found_data_instance,
+    }) = expect_data_instance(tokens)
+    {
+        return Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataDefinition::Const(found_data_instance),
+        });
+    }
+    if let Ok(ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: found_data_instance,
+    }) = expect_data_instance(tokens)
+    {
+        return Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataDefinition::Const(found_data_instance),
+        });
+    }
+    if let Ok(ExpectOk {
+        rest,
+        tokens_consumed_count,
+        outcome: identifier,
+    }) = expect_identifier(tokens)
+    {
+        return Ok(ExpectOk {
+            rest,
+            tokens_consumed_count,
+            outcome: DataDefinition::Identifier(identifier),
+        });
+    }
+    Err(SyntaxError(format!(
+        "Expected a function call, a constant value or an identifier, instead found {:?}.",
+        tokens.first()
+    )))
+}
+
+pub fn expect_expression<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Expression> {
+    let ExpectOk {
+        rest: rest_atom,
+        tokens_consumed_count: tokens_consumed_count_lhs,
+        outcome: lhs_raw,
+    } = expect_data_definition(tokens)?;
+    let lhs = Expression::Atom(lhs_raw);
+    let ExpectOk {
+        rest,
+        tokens_consumed_count: tokens_consumed_count_operator_and_rhs,
+        outcome: operator_and_rhs,
+    } = detect(
+        rest_atom,
+        |tokens| expect_next_token(tokens, &"an operator"),
+        expect_data_definition,
+    )?;
+    match operator_and_rhs {
+        Some((
+            Token {
+                value: TokenValue::Delimiting(Delimiter::Equal),
+                ..
+            },
+            rhs_raw,
+        )) => Ok(ExpectOk {
+            rest,
+            tokens_consumed_count: tokens_consumed_count_lhs
+                + tokens_consumed_count_operator_and_rhs,
+            outcome: Expression::Equal(Box::new(lhs), Box::new(Expression::Atom(rhs_raw))),
         }),
-        Err(_) => match expect_data_instance(tokens) {
-            Ok(ExpectOk {
-                rest,
-                tokens_consumed_count,
-                outcome: found_data_instance,
-            }) => Ok(ExpectOk {
-                rest,
-                tokens_consumed_count,
-                outcome: DataDefinition::Const(found_data_instance),
-            }),
-            Err(_) => Err(SyntaxError(format!(
-                "Expected a const value or a function call, instead found {:?}.",
-                tokens.first()
-            ))),
-        },
+        Some((
+            Token {
+                value: unexpected_token,
+                ..
+            },
+            _,
+        )) => Err(SyntaxError(format!(
+            "Expected {}, instead found {}.",
+            Delimiter::Equal,
+            unexpected_token
+        ))),
+        None => Ok(ExpectOk {
+            rest,
+            tokens_consumed_count: tokens_consumed_count_lhs,
+            outcome: lhs,
+        }),
     }
 }
 

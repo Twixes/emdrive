@@ -1,6 +1,7 @@
 use super::expects::*;
 use super::tokenizer::*;
 use crate::constructs::components::Validatable;
+use crate::constructs::statements::SelectStatement;
 use crate::constructs::statements::{CreateTableStatement, InsertStatement};
 use crate::sql::errors::*;
 
@@ -47,7 +48,12 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
             value: TokenValue::Const(Keyword::Insert),
             ..
         } => Ok(Statement::Insert(consume_all(rest, expect_insert)?)),
-        // ???
+        // SELECT
+        Token {
+            value: TokenValue::Const(Keyword::Select),
+            ..
+        } => Ok(Statement::Select(consume_all(rest, expect_select)?)),
+        // Something else
         wrong_token => Err(SyntaxError(format!(
             "Expected {} or {}, instead found {}.",
             Keyword::Create,
@@ -61,6 +67,7 @@ pub fn parse_statement(input: &str) -> Result<Statement, SyntaxError> {
 pub enum Statement {
     CreateTable(CreateTableStatement),
     Insert(InsertStatement),
+    Select(SelectStatement),
 }
 
 impl Validatable for Statement {
@@ -68,6 +75,7 @@ impl Validatable for Statement {
         match self {
             Statement::CreateTable(create_table) => create_table.validate(),
             Statement::Insert(insert) => insert.validate(),
+            Statement::Select(select) => select.validate(),
         }
     }
 }
@@ -77,9 +85,10 @@ mod tests {
     use crate::constructs::{
         components::{
             ColumnDefinition, DataDefinition, DataInstance, DataInstanceRaw, DataType, DataTypeRaw,
-            TableDefinition,
+            Expression, TableDefinition,
         },
         functions::Function,
+        statements::SelectColumn,
     };
 
     use super::*;
@@ -164,6 +173,32 @@ mod tests {
                     DataInstance::Direct(DataInstanceRaw::UInt32(1815)),
                     DataInstance::Direct(DataInstanceRaw::String("Waterloo".into())),
                 ]
+            })
+        )
+    }
+
+    #[test]
+    fn parsing_works_with_select() {
+        let statement = "SELECT *, foo FROM xyz WHERE foo = 'bar';";
+
+        let detected_statement = parse_statement(&statement).unwrap();
+
+        assert_eq!(
+            detected_statement,
+            Statement::Select(SelectStatement {
+                columns: vec![
+                    SelectColumn::All,
+                    SelectColumn::Identifier("foo".to_string()),
+                ],
+                source: "xyz".to_string(),
+                where_clause: Some(Expression::Equal(
+                    Box::new(Expression::Atom(DataDefinition::Identifier(
+                        "foo".to_string()
+                    ))),
+                    Box::new(Expression::Atom(DataDefinition::Const(
+                        DataInstance::Direct(DataInstanceRaw::String("bar".into()))
+                    )))
+                ))
             })
         )
     }

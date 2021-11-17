@@ -8,11 +8,12 @@ pub enum Delimiter {
     Comma,
     ParenthesisOpening,
     ParenthesisClosing,
+    Equal,
 }
 
 impl Delimiter {
     /// Delimiting characters that affect statement meaning. Each one is a Delimiter variant.
-    const MEANINGFUL_CHARS: &'static [char] = &[',', '(', ')'];
+    const MEANINGFUL_CHARS: &'static [char] = &[',', '(', ')', '='];
     const STATEMENT_SEPARATOR: char = ';';
     const STRING_MARKER: char = '\'';
     const ESCAPE_CHARACTER: char = '\\';
@@ -27,6 +28,7 @@ impl fmt::Display for Delimiter {
                 Self::Comma => "comma `,`",
                 Self::ParenthesisOpening => "opening parenthesis `(`",
                 Self::ParenthesisClosing => "closing parenthesis `)`",
+                Self::Equal => "equality sign `=`",
             }
         )
     }
@@ -40,6 +42,7 @@ impl FromStr for Delimiter {
             "," => Ok(Self::Comma),
             "(" => Ok(Self::ParenthesisOpening),
             ")" => Ok(Self::ParenthesisClosing),
+            "=" => Ok(Self::Equal),
             _ => Err(format!(
                 "`{}` does not refer to a meaningful delimiter",
                 candidate
@@ -51,6 +54,10 @@ impl FromStr for Delimiter {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Keyword {
     Create,
+    Select,
+    From,
+    Where,
+    As,
     Insert,
     Into,
     Values,
@@ -64,6 +71,7 @@ pub enum Keyword {
     Key,
     Null,
     Default,
+    Asterisk,
 }
 
 impl fmt::Display for Keyword {
@@ -73,6 +81,10 @@ impl fmt::Display for Keyword {
             "keyword `{}`",
             match self {
                 Keyword::Create => "CREATE",
+                Keyword::Select => "SELECT",
+                Keyword::From => "FROM",
+                Keyword::Where => "WHERE",
+                Keyword::As => "AS",
                 Keyword::Insert => "INSERT",
                 Keyword::Into => "INTO",
                 Keyword::Values => "VALUES",
@@ -86,6 +98,7 @@ impl fmt::Display for Keyword {
                 Keyword::Key => "KEY",
                 Keyword::Null => "NULL",
                 Keyword::Default => "DEFAULT",
+                Keyword::Asterisk => "*",
             }
         )
     }
@@ -97,6 +110,10 @@ impl FromStr for Keyword {
     fn from_str(candidate: &str) -> std::result::Result<Self, Self::Err> {
         match candidate.to_lowercase().as_str() {
             "create" => Ok(Self::Create),
+            "select" => Ok(Self::Select),
+            "from" => Ok(Self::From),
+            "where" => Ok(Self::Where),
+            "as" => Ok(Self::As),
             "insert" => Ok(Self::Insert),
             "into" => Ok(Self::Into),
             "values" => Ok(Self::Values),
@@ -110,7 +127,8 @@ impl FromStr for Keyword {
             "key" => Ok(Self::Key),
             "null" => Ok(Self::Null),
             "default" => Ok(Self::Default),
-            _ => Err(format!("`{}` does not refer to a const token", candidate)),
+            "*" => Ok(Self::Asterisk),
+            _ => Err(format!("`{}` does not refer to a keyword", candidate)),
         }
     }
 }

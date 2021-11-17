@@ -28,7 +28,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
     let ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_default,
-        outcome: default,
+        outcome: maybe_default,
     } = detect(
         rest,
         |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Default)),
@@ -45,7 +45,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
             name,
             data_type,
             primary_key: primary_key_option.is_some(),
-            default,
+            default: maybe_default.and_then(|(_, default)| Some(default)),
         },
     })
 }

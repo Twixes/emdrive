@@ -11,48 +11,26 @@ pub fn consume_all<'t, O>(
     Ok(outcome)
 }
 
-pub fn optionalize<'t, O>(
-    tokens: &'t [Token],
-    expect_optional: ExpectFn<'t, O>,
-) -> ExpectOk<'t, Option<O>> {
-    match expect_optional(tokens) {
-        Ok(ExpectOk {
-            rest,
-            tokens_consumed_count,
-            outcome,
-        }) => ExpectOk {
-            rest,
-            tokens_consumed_count,
-            outcome: Some(outcome),
-        },
-        Err(_) => ExpectOk {
-            rest: tokens,
-            tokens_consumed_count: 0,
-            outcome: None,
-        },
-    }
-}
-
 pub fn detect<'t, P, M>(
     tokens: &'t [Token],
     expect_predicate: ExpectFn<'t, P>,
     expect_meaning: ExpectFn<'t, M>,
-) -> ExpectResult<'t, Option<M>> {
+) -> ExpectResult<'t, Option<(P, M)>> {
     match expect_predicate(tokens) {
         Ok(ExpectOk {
             rest,
             tokens_consumed_count: tokens_consumed_count_predicate,
-            ..
+            outcome: outcome_predicate,
         }) => match expect_meaning(rest) {
             Ok(ExpectOk {
                 rest,
                 tokens_consumed_count: tokens_consumed_count_meaning,
-                outcome,
+                outcome: outcome_meaning,
             }) => Ok(ExpectOk {
                 rest,
                 tokens_consumed_count: tokens_consumed_count_predicate
                     + tokens_consumed_count_meaning,
-                outcome: Some(outcome),
+                outcome: Some((outcome_predicate, outcome_meaning)),
             }),
             Err(err) => Err(err),
         },

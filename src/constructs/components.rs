@@ -72,8 +72,19 @@ pub enum DataInstance {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DataDefinition {
+    // A column identifier.
+    Identifier(String),
+    // A constant value.
     Const(DataInstance),
+    // A function call.
     FunctionCall(Function),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Expression {
+    Atom(DataDefinition),
+    /// LHS = RHS
+    Equal(Box<Self>, Box<Self>),
 }
 
 pub trait Validatable {

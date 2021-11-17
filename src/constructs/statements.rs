@@ -26,3 +26,23 @@ impl Validatable for InsertStatement {
         Ok(()) // TODO: Add checks
     }
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum SelectColumn {
+    All,
+    Identifier(String),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct SelectStatement {
+    pub columns: Vec<SelectColumn>,
+    /// String means table name
+    pub source: String,
+    pub where_clause: Option<Expression>,
+}
+
+impl Validatable for SelectStatement {
+    fn validate(&self) -> Result<(), ValidationError> {
+        Ok(()) // TODO: Add checks
+    }
+}
