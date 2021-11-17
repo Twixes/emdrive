@@ -52,6 +52,7 @@ pub fn expect_select<'t>(tokens: &'t [Token]) -> ExpectResult<'t, SelectStatemen
         rest,
         |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Where)),
         expect_expression,
+        &"WHERE conditions",
     )?;
     Ok(ExpectOk {
         rest,

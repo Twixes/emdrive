@@ -228,6 +228,7 @@ pub fn expect_expression<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Expression
         rest_atom,
         |tokens| expect_next_token(tokens, &"an operator"),
         expect_data_definition,
+        &"the right-hand side of the expression",
     )?;
     match operator_and_rhs {
         Some((

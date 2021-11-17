@@ -15,25 +15,30 @@ pub fn detect<'t, P, M>(
     tokens: &'t [Token],
     expect_predicate: ExpectFn<'t, P>,
     expect_meaning: ExpectFn<'t, M>,
+    expectation_description: &dyn std::fmt::Display,
 ) -> ExpectResult<'t, Option<(P, M)>> {
     match expect_predicate(tokens) {
         Ok(ExpectOk {
             rest,
             tokens_consumed_count: tokens_consumed_count_predicate,
             outcome: outcome_predicate,
-        }) => match expect_meaning(rest) {
-            Ok(ExpectOk {
-                rest,
-                tokens_consumed_count: tokens_consumed_count_meaning,
-                outcome: outcome_meaning,
-            }) => Ok(ExpectOk {
-                rest,
-                tokens_consumed_count: tokens_consumed_count_predicate
-                    + tokens_consumed_count_meaning,
-                outcome: Some((outcome_predicate, outcome_meaning)),
-            }),
-            Err(err) => Err(err),
-        },
+        }) => {
+            // Let's just make sure we're not at the end of the statement
+            expect_next_token(rest, expectation_description)?;
+            match expect_meaning(rest) {
+                Ok(ExpectOk {
+                    rest,
+                    tokens_consumed_count: tokens_consumed_count_meaning,
+                    outcome: outcome_meaning,
+                }) => Ok(ExpectOk {
+                    rest,
+                    tokens_consumed_count: tokens_consumed_count_predicate
+                        + tokens_consumed_count_meaning,
+                    outcome: Some((outcome_predicate, outcome_meaning)),
+                }),
+                Err(err) => Err(err),
+            }
+        }
         Err(_) => Ok(ExpectOk {
             rest: tokens,
             tokens_consumed_count: 0,

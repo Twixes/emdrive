@@ -24,6 +24,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
         rest,
         |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Primary)),
         |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Key)),
+        &TokenValue::Const(Keyword::Key),
     )?;
     let ExpectOk {
         rest,
@@ -33,6 +34,7 @@ pub fn expect_column_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Col
         rest,
         |tokens| expect_token_value(tokens, &TokenValue::Const(Keyword::Default)),
         expect_data_definition,
+        &"DEFAULT definition",
     )?;
     // TODO: Test against types like UINT16(8)
     Ok(ExpectOk {
