@@ -4,12 +4,30 @@ use crate::executor::{ExecutorPayload, QueryResult};
 use crate::sql::parse_statement;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::collections::HashMap;
 use std::{convert, net, str::FromStr};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time;
 use tracing::*;
 use ulid::Ulid;
+use thiserror::Error;
+
+#[derive(Error, Debug, PartialEq)]
+#[error("ServerError: {0}")]
+pub struct ServerError(pub String);
+
+impl Serialize for ServerError {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(2))?;
+        map.serialize_entry("type", "server")?;
+        map.serialize_entry("message", &self.0)?;
+        map.end()
+    }
+}
 
 async fn process_post(
     executor_tx: mpsc::Sender<ExecutorPayload>,
@@ -30,7 +48,13 @@ async fn process_post(
         );
     }
     let (resp_tx, resp_rx) = oneshot::channel::<QueryResult>();
-    executor_tx.send((statement, resp_tx)).await.unwrap();
+    if let Err(_) = executor_tx.send((statement, resp_tx)).await {
+        // If there was an error on `send`, that means that the receiver has disconnected for some reason
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            serde_json::to_string(&ServerError("The query executor has disengaged.".into())).unwrap(),
+        )
+    }
     let query_result = resp_rx.await;
     (
         StatusCode::OK,
@@ -72,7 +96,7 @@ async fn echo(
     let timer = time::Instant::now();
     let request_id = Ulid::new();
     debug!("⚡️ Received request ID {}", request_id);
-    let mut response_builder = Response::builder().header("Content-Type", "application/json");
+    let response_builder = Response::builder().header("Content-Type", "application/json");
     let result = match (req.uri().path(), req.method()) {
         ("/", &Method::POST) => {
             // Read-write
