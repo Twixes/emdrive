@@ -7,11 +7,11 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use std::collections::HashMap;
 use std::{convert, net, str::FromStr};
+use thiserror::Error;
 use tokio::sync::{mpsc, oneshot};
 use tokio::time;
 use tracing::*;
 use ulid::Ulid;
-use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 #[error("ServerError: {0}")]
@@ -52,8 +52,9 @@ async fn process_post(
         // If there was an error on `send`, that means that the receiver has disconnected for some reason
         return (
             StatusCode::INTERNAL_SERVER_ERROR,
-            serde_json::to_string(&ServerError("The query executor has disengaged.".into())).unwrap(),
-        )
+            serde_json::to_string(&ServerError("The query executor has disengaged.".into()))
+                .unwrap(),
+        );
     }
     let query_result = resp_rx.await;
     (
