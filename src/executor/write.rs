@@ -5,11 +5,8 @@ use crate::storage::filesystem::{
     does_table_file_exist, seek_read_decode_page, seek_write_page, write_table_file,
 };
 use crate::storage::paging::{construct_blank_table, Page};
-use crate::storage::system::{ SYSTEM_SCHEMA_NAME};
-use crate::{
-    constructs::components::{TableDefinition},
-    storage::{ Row},
-};
+use crate::storage::system::SYSTEM_SCHEMA_NAME;
+use crate::{constructs::components::TableDefinition, storage::Row};
 use tracing::*;
 
 pub async fn ensure_table_file_exists(

@@ -6,7 +6,7 @@ use std::io;
 use std::sync::Arc;
 
 use crate::config;
-use crate::storage::system::{SystemTable};
+use crate::storage::system::SystemTable;
 use crate::{
     constructs::components::{DataInstance, DataInstanceRaw, TableDefinition},
     sql::Statement,

@@ -1,28 +1,41 @@
-use crate::{storage::{Row, filesystem::seek_read_decode_page, paging::Page}, config, constructs::components::TableDefinition};
+use crate::{
+    config,
+    constructs::components::TableDefinition,
+    storage::{filesystem::seek_read_decode_page, paging::Page, Row},
+};
 
 pub async fn read_all_rows(
     config: &config::Config,
     schema: &str,
     table_definition: &TableDefinition,
 ) -> Result<Vec<Row>, String> {
-    let meta = seek_read_decode_page(&config, &schema, &table_definition, 0).await.unwrap();
+    let meta = seek_read_decode_page(&config, &schema, &table_definition, 0)
+        .await
+        .unwrap();
     match meta {
-        Page::Meta { b_tree_root_page_index, ..} => {
-            let data =  seek_read_decode_page(&config, &schema, &table_definition, b_tree_root_page_index).await.unwrap();
+        Page::Meta {
+            b_tree_root_page_index,
+            ..
+        } => {
+            let data =
+                seek_read_decode_page(&config, &schema, &table_definition, b_tree_root_page_index)
+                    .await
+                    .unwrap();
             match data {
-                Page::BTreeLeaf { rows, ..} => Ok(rows),
+                Page::BTreeLeaf { rows, .. } => Ok(rows),
                 _ => Err("Invalid page type 1".to_string()),
             }
-        },
-        _ => {
-            Err("Invalid page type 0".to_string())
         }
+        _ => Err("Invalid page type 0".to_string()),
     }
 }
 
 #[cfg(test)]
 mod read_tests {
-    use crate::{storage::{paging::construct_blank_table, filesystem::write_table_file}, constructs::components::{ColumnDefinition, DataType, DataTypeRaw}};
+    use crate::{
+        constructs::components::{ColumnDefinition, DataType, DataTypeRaw},
+        storage::{filesystem::write_table_file, paging::construct_blank_table},
+    };
 
     use super::*;
     use pretty_assertions::assert_eq;
