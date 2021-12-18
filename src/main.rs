@@ -9,7 +9,7 @@ fn main() {
     setup_panic!(Metadata {
         name: "Emdrive".into(),
         version: env!("CARGO_PKG_VERSION").into(),
-        authors: "".into(),
+        authors: "".into(), // Empty to disable
         homepage: env!("CARGO_PKG_REPOSITORY").into(),
     });
     let subscriber = FmtSubscriber::builder()
@@ -19,6 +19,6 @@ fn main() {
     info!("🔢 Starting Emdrive...");
     let instance = Instance::preload();
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(instance.run());
+    runtime.block_on(instance.run()).unwrap();
     info!("🛑 Emdrive shut down");
 }

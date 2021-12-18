@@ -62,6 +62,7 @@ impl Executor {
     }
 
     pub async fn bootstrap(&mut self) -> Result<(), io::Error> {
+        debug!("⬆️ Bootstraping the executor...");
         for table in SystemTable::ALL {
             let table_definition = table.get_definition();
             write::ensure_table_file_exists(&self.config, &table_definition).await?;
@@ -74,7 +75,6 @@ impl Executor {
             .rx
             .take()
             .expect("`prepare_channel` must be ran before `start`");
-        debug!("🔢 Bootstraping the executor...");
         self.bootstrap().await?;
         debug!("🗡 Executor engaged");
         while let Some(payload) = rx.recv().await {
