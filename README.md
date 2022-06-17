@@ -23,7 +23,7 @@ Emdrive types are **non-nullable by default**. They can made so simply by wrappi
 | Name | Category | Description | Data types | Supported operators |
 | --- | --- | --- | --- | --- |
 | `btree` | general | [B+ tree](https://en.wikipedia.org/wiki/B+_tree) | all | `=` (equality) |
-| `emtree` | metric | [EM-tree](https://dl.gi.de/bitstream/handle/20.500.12116/648/paper31.pdf) | depending on chosen metric | `@` (distance) |
+| `emtree` | metric | [EM-tree](http://btw2017.informatik.uni-stuttgart.de/slidesandpapers/F8-12-22/paper_web.pdf) | depending on chosen metric | `@` (distance) |
 
 ### Metrics
 
