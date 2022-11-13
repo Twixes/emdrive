@@ -26,7 +26,7 @@ pub type GlobalCount = u64;
 /// Trait for reading data from blobs.
 pub trait Encodable: Sized {
     /// Extract value from blob in an optimized way, returning the rest of the blob for futher processing.
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String>;
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String>;
 
     /// How many bytes are needed to encode this value.
     /// Returns the advanced cursor position, 0 being the very front of the blob.
@@ -57,7 +57,7 @@ pub trait EncodableWithAssumption<'b>: Sized {
 macro_rules! encodable_number_impl {
     ($($t:ty)*) => ($(
         impl Encodable for $t {
-            fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+            fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
                 const SIZE: usize = mem::size_of::<$t>();
                 Ok((
                     Self::from_be_bytes(
@@ -88,7 +88,7 @@ encodable_number_impl! { isize i8 i16 i32 i64 i128 usize u16 u32 u64 u128 }
 
 // u8 is a special case, as it can be used in blobs with zero transformation
 impl Encodable for u8 {
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         Ok((blob[0], &blob[1..]))
     }
 
@@ -103,7 +103,7 @@ impl Encodable for u8 {
 }
 
 impl Encodable for bool {
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         Ok((blob[0] != 0, &blob[1..]))
     }
 
@@ -118,7 +118,7 @@ impl Encodable for bool {
 }
 
 impl Encodable for String {
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         let (char_count, rest) = VarLen::try_decode(blob)?;
         let char_count_idx = usize::from(char_count);
         match str::from_utf8(&rest[..char_count_idx]) {
@@ -142,7 +142,7 @@ impl Encodable for String {
 }
 
 impl Encodable for OffsetDateTime {
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         let (unix_timestamp_raw, rest) = i64::try_decode(blob)?;
         match Self::from_unix_timestamp(unix_timestamp_raw) {
             Ok(unix_timestamp) => Ok((unix_timestamp, rest)),
@@ -166,7 +166,7 @@ impl Encodable for OffsetDateTime {
 }
 
 impl Encodable for Uuid {
-    fn try_decode<'b>(blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         const SIZE: usize = 16;
         Ok((
             Self::from_bytes(unsafe {
@@ -190,7 +190,7 @@ impl Encodable for Uuid {
 }
 
 impl Encodable for DataInstanceRaw {
-    fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(_blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         panic!("`try_decode` would be too ambiguous for `DataInstanceRaw` - `try_decode_assume` should be used instead")
     }
 
@@ -227,9 +227,9 @@ impl<'b> EncodableWithAssumption<'b> for DataInstanceRaw {
     type Assumption = DataTypeRaw;
 
     fn try_decode_assume(
-        blob: ReadBlob<'b>,
+        blob: ReadBlob,
         assumption: Self::Assumption,
-    ) -> Result<(Self, ReadBlob<'b>), String> {
+    ) -> Result<(Self, ReadBlob), String> {
         match assumption {
             DataTypeRaw::UInt8 => {
                 let (value, rest) = u8::try_decode(blob)?;
@@ -272,7 +272,7 @@ impl<'b> EncodableWithAssumption<'b> for DataInstanceRaw {
 }
 
 impl Encodable for DataInstance {
-    fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(_blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         panic!("`try_decode` would be too ambiguous for `DataInstance` – use `try_decode_assume` instead")
     }
 
@@ -300,9 +300,9 @@ impl<'b> EncodableWithAssumption<'b> for DataInstance {
     type Assumption = &'b DataType;
 
     fn try_decode_assume(
-        blob: ReadBlob<'b>,
+        blob: ReadBlob,
         assumption: Self::Assumption,
-    ) -> Result<(Self, ReadBlob<'b>), String> {
+    ) -> Result<(Self, ReadBlob), String> {
         if assumption.is_nullable {
             let (null_marker, rest) = bool::try_decode(blob)?;
             if null_marker {
@@ -338,7 +338,7 @@ impl Serialize for NamedRow<'_> {
 }
 
 impl Encodable for Row {
-    fn try_decode<'b>(_blob: ReadBlob<'b>) -> Result<(Self, ReadBlob<'b>), String> {
+    fn try_decode(_blob: ReadBlob) -> Result<(Self, ReadBlob), String> {
         panic!("`try_decode` would be too ambiguous for `Row` - `try_decode_assume` should be used instead")
     }
 
@@ -371,6 +371,7 @@ impl<'b> EncodableWithAssumption<'b> for Row {
     }
 }
 
+#[cfg(test)]
 mod encoding_tests {
     use super::*;
 

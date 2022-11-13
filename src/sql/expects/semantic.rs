@@ -6,7 +6,7 @@ use crate::sql::errors::*;
 use crate::sql::expects::{generic::*, ExpectOk, ExpectResult};
 use crate::sql::tokenizer::*;
 
-pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
+pub fn expect_identifier(tokens: &[Token]) -> ExpectResult<String> {
     let ExpectOk {
         outcome: found_token,
         ..
@@ -27,7 +27,7 @@ pub fn expect_identifier<'t>(tokens: &'t [Token]) -> ExpectResult<'t, String> {
     }
 }
 
-pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTypeRaw> {
+pub fn expect_data_type_raw(tokens: &[Token]) -> ExpectResult<DataTypeRaw> {
     let ExpectOk {
         outcome: found_token,
         ..
@@ -48,7 +48,7 @@ pub fn expect_data_type_raw<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataTyp
     }
 }
 
-pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
+pub fn expect_data_type(tokens: &[Token]) -> ExpectResult<DataType> {
     let is_nullable = matches!(
         expect_token_value(tokens, &TokenValue::Const(Keyword::Nullable)),
         Ok(_)
@@ -77,7 +77,7 @@ pub fn expect_data_type<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataType> {
     })
 }
 
-pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataInstance> {
+pub fn expect_data_instance(tokens: &[Token]) -> ExpectResult<DataInstance> {
     let ExpectOk {
         rest,
         tokens_consumed_count,
@@ -122,7 +122,7 @@ pub fn expect_data_instance<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataIns
     }
 }
 
-pub fn expect_function_call<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Function> {
+pub fn expect_function_call(tokens: &[Token]) -> ExpectResult<Function> {
     let ExpectOk {
         rest,
         tokens_consumed_count: tokens_consumed_count_call,
@@ -158,7 +158,7 @@ pub fn expect_function_call<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Functio
     }
 }
 
-pub fn expect_data_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataDefinition> {
+pub fn expect_data_definition(tokens: &[Token]) -> ExpectResult<DataDefinition> {
     if let Ok(ExpectOk {
         rest,
         tokens_consumed_count,
@@ -213,7 +213,7 @@ pub fn expect_data_definition<'t>(tokens: &'t [Token]) -> ExpectResult<'t, DataD
     )))
 }
 
-pub fn expect_expression<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Expression> {
+pub fn expect_expression(tokens: &[Token]) -> ExpectResult<Expression> {
     let ExpectOk {
         rest: rest_atom,
         tokens_consumed_count: tokens_consumed_count_lhs,

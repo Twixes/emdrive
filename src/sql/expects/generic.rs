@@ -47,7 +47,7 @@ pub fn detect<'t, P, M>(
     }
 }
 
-pub fn expect_identity<'t>(tokens: &'t [Token]) -> ExpectResult<'t, Vec<Token>> {
+pub fn expect_identity(tokens: &[Token]) -> ExpectResult<Vec<Token>> {
     Ok(ExpectOk {
         rest: &[][..],
         tokens_consumed_count: tokens.len(),
@@ -93,7 +93,7 @@ pub fn expect_token_values_sequence<'t>(
     })
 }
 
-pub fn expect_end_of_statement<'t>(tokens: &'t [Token]) -> ExpectResult<'t, ()> {
+pub fn expect_end_of_statement(tokens: &[Token]) -> ExpectResult<'_, ()> {
     match tokens.first() {
         None => Ok(ExpectOk {
             rest: tokens,
@@ -179,11 +179,11 @@ pub fn expect_comma_separated<'t, O>(
 }
 
 // Expert an enclosure, the outcome being enclosure contents excluding opening and closing delimiters.
-pub fn expect_enclosure<'t>(
-    tokens: &'t [Token],
+pub fn expect_enclosure(
+    tokens: &[Token],
     opening: Delimiter,
     closing: Delimiter,
-) -> ExpectResult<'t, &'t [Token]> {
+) -> ExpectResult<&[Token]> {
     let ExpectOk { rest, .. } = expect_token_value(
         tokens,
         &TokenValue::Delimiting(Delimiter::ParenthesisOpening),
