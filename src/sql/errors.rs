@@ -1,7 +1,7 @@
 use serde::{ser::SerializeMap, Serialize, Serializer};
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[error("SyntaxError: {0}")]
 pub struct SyntaxError(pub String);
 
@@ -17,7 +17,7 @@ impl Serialize for SyntaxError {
     }
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 #[error("ValidationError: {0}")]
 pub struct ValidationError(pub String);
 
