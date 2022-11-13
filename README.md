@@ -12,7 +12,7 @@ Database management system for fast similarity search within metric spaces, writ
 | `UINT64` | unsigned 64-bit integer | 8 bytes | ≥ 0 and < 2⁶⁴ |
 | `UINT128` | unsigned 128-bit integer | 16 bytes | ≥ 0 and < 2¹²⁸ |
 | `BOOL` | boolean value | 1 byte | either `TRUE` (non-zero) or `FALSE` (zero) |
-| `TIMESTAMP` | number of milliseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ ms before Unix epoch and < 2⁶³ ms after Unix epoch (around 292 million years in either direction) |
+| `TIMESTAMP` | number of microseconds [since Unix epoch](https://en.wikipedia.org/wiki/Unix_time), saved in a signed 64-bit integer | 8 bytes | ≥ 2⁶³ µs before Unix epoch and < 2⁶³ µs after Unix epoch (around 292 000 years in either direction) |
 | `UUID` | UUID-like value | 16 bytes | any sequence of 128 bits |
 | `STRING(n)` | UTF-8 string | 2+n bytes | ≤ `n` characters, where `n` ≤ 2048 |
 
