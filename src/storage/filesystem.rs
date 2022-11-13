@@ -81,7 +81,7 @@ pub async fn seek_write_page(
         .await?;
     file.seek(SeekFrom::Start(page_index as u64 * PAGE_SIZE as u64))
         .await?;
-    file.write(&data).await?;
+    file.write_all(&data).await?;
     Ok(())
 }
 
