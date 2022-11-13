@@ -96,14 +96,14 @@ mod tests {
 
     #[test]
     fn parsing_works_with_create_table() {
-        let statement = "CREATE TABLE IF NOT EXISTS test (
+        const STATEMENT: &str = "CREATE TABLE IF NOT EXISTS test (
             id STRING PRIMARY KEY,
             server_id nullable(UINT64),
             hash UINT128 DEFAULT 666,
             sent_at TIMESTAMP DEFAULT NOW()
         );";
 
-        let detected_statement = parse_statement(&statement).unwrap();
+        let detected_statement = parse_statement(STATEMENT).unwrap();
 
         assert_eq!(
             detected_statement,
@@ -159,10 +159,10 @@ mod tests {
 
     #[test]
     fn parsing_works_with_insert() {
-        let statement = "INSERT INTO xyz (foo, bar)
+        const STATEMENT: &str = "INSERT INTO xyz (foo, bar)
         VALUES (1815, 'Waterloo');";
 
-        let detected_statement = parse_statement(&statement).unwrap();
+        let detected_statement = parse_statement(STATEMENT).unwrap();
 
         assert_eq!(
             detected_statement,
@@ -179,9 +179,9 @@ mod tests {
 
     #[test]
     fn parsing_works_with_select() {
-        let statement = "SELECT *, foo FROM xyz WHERE foo = 'bar';";
+        const STATEMENT: &str = "SELECT *, foo FROM xyz WHERE foo = 'bar';";
 
-        let detected_statement = parse_statement(&statement).unwrap();
+        let detected_statement = parse_statement(STATEMENT).unwrap();
 
         assert_eq!(
             detected_statement,

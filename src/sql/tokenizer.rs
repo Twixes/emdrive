@@ -271,13 +271,13 @@ mod tests {
 
     #[test]
     fn tokenization_works_with_create_table() {
-        let statement = "CREATE TABLE IF NOT EXISTS test (
+        const STATEMENT: &str = "CREATE TABLE IF NOT EXISTS test (
             server_id nullable(UINT64),
             hash UINT128 METRIC KEY,
             sent_at TIMESTAMP DEFAULT NOW()
         );";
 
-        let detected_tokens = tokenize_statement(&statement);
+        let detected_tokens = tokenize_statement(STATEMENT);
 
         let expected_tokens = [
             Token {
@@ -390,11 +390,11 @@ mod tests {
 
     #[test]
     fn tokenization_is_case_sensitive_and_insensitive_properly() {
-        let statement = "CREATE table If nOT exists TEST (
+        const STATEMENT: &str = "CREATE table If nOT exists TEST (
             serverId nullable(Uint64)
         )";
 
-        let detected_tokens = tokenize_statement(&statement);
+        let detected_tokens = tokenize_statement(STATEMENT);
 
         let expected_tokens = [
             Token {
@@ -455,11 +455,11 @@ mod tests {
 
     #[test]
     fn tokenization_supports_various_strings() {
-        let statement = "INSERT INTO test
+        const STATEMENT: &str = "INSERT INTO test
             (foo, bar, baz)
             VALUES ('123', '   x ', 'The \\'Moon\\'')";
 
-        let detected_tokens = tokenize_statement(&statement);
+        let detected_tokens = tokenize_statement(STATEMENT);
 
         let expected_tokens = [
             Token {

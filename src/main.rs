@@ -13,7 +13,7 @@ fn main() {
         homepage: env!("CARGO_PKG_REPOSITORY").into(),
     });
     let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_str(&"emdrive=debug").unwrap())
+        .with_env_filter(EnvFilter::from_str("emdrive=debug").unwrap())
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
     info!("🔢 Starting Emdrive...");

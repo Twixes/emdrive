@@ -9,7 +9,7 @@ pub async fn read_all_rows(
     schema: &str,
     table_definition: &TableDefinition,
 ) -> Result<Vec<Row>, String> {
-    let meta = seek_read_decode_page(&config, &schema, &table_definition, 0)
+    let meta = seek_read_decode_page(config, schema, table_definition, 0)
         .await
         .unwrap();
     match meta {
@@ -18,7 +18,7 @@ pub async fn read_all_rows(
             ..
         } => {
             let data =
-                seek_read_decode_page(&config, &schema, &table_definition, b_tree_root_page_index)
+                seek_read_decode_page(config, schema, table_definition, b_tree_root_page_index)
                     .await
                     .unwrap();
             match data {
@@ -39,7 +39,6 @@ mod read_tests {
 
     use super::*;
     use pretty_assertions::assert_eq;
-    use rand::{distributions::Alphanumeric, thread_rng, Rng};
 
     fn get_test_table() -> TableDefinition {
         TableDefinition::new(
